@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biblioteca Particular</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Lora:wght@400;500;600&family=Parisienne&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <svg class="logo" viewBox="0 0 200 200" role="img" aria-label="Logo Biblioteca Particular">
+        <defs>
+          <path id="arco-topo" d="M 26,100 A 74,74 0 0 1 174,100"/>
+          <path id="arco-base" d="M 16,100 A 84,84 0 0 0 184,100"/>
+        </defs>
+        <circle cx="100" cy="100" r="96" fill="none" stroke="#000" stroke-width="3"/>
+        <text font-family="Lora, Georgia, serif" font-size="15" font-weight="600" fill="#000" text-anchor="middle">
+          <textPath href="#arco-topo" startOffset="50%" textLength="190" lengthAdjust="spacing">BIBLIOTECA PARTICULAR</textPath>
+        </text>
+        <text font-family="Parisienne, cursive" font-size="22" fill="#000" text-anchor="middle">
+          <textPath href="#arco-base" startOffset="50%">Sislene Rosa</textPath>
+        </text>
+        <g fill="none" stroke="#000" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M 100,150 C 88,141 72,139 58,143 L 58,164 C 72,160 88,162 100,170 C 112,162 128,160 142,164 L 142,143 C 128,139 112,141 100,150 Z"/>
+          <path d="M 100,150 L 100,108"/>
+          <path d="M 100,86 C 88,86 84,72 92,66 C 96,62 104,62 108,66 C 116,72 112,86 100,86 Z"/>
+          <path d="M 100,100 C 96,96 96,90 100,88 C 104,90 104,96 100,100 Z"/>
+          <path d="M 100,128 C 90,124 84,116 84,110 C 92,112 98,118 100,128 Z"/>
+          <path d="M 100,120 C 110,116 116,108 116,102 C 108,104 102,110 100,120 Z"/>
+        </g>
+      </svg>
+      <div class="titulo-marca">
+        <h1>Biblioteca Particular</h1>
+        <p id="subtitulo" class="assinatura">Sislene Rosa</p>
+      </div>
+    </div>
+    <input type="search" id="busca" class="busca-principal"
+           placeholder="Buscar por título, autor, editora ou localização..."
+           aria-label="Buscar no acervo">
+    <button id="abrir-novo" type="button" class="primario">+ Novo livro</button>
+  </header>
+
+  <main>
+    <section class="cabecalho-pagina">
+      <h2>Sua biblioteca, com cuidado de jardim</h2>
+      <p>Um catálogo para organizar o que você lê, quer ler e já leu.</p>
+    </section>
+
+    <section id="metricas" class="metricas" aria-label="Resumo do acervo. Clique para filtrar."></section>
+
+    <div id="pills-generos" class="pills" aria-label="Filtrar por gênero"></div>
+
+    <section class="barra-filtros" aria-label="Filtros">
+      <div class="campo">
+        <label for="filtro-genero">Gênero</label>
+        <select id="filtro-genero"></select>
+      </div>
+      <div class="campo">
+        <label for="filtro-status">Status de leitura</label>
+        <select id="filtro-status">
+          <option value="">Todos os status</option>
+          <option value="nao_lido">Não lido</option>
+          <option value="lendo">Lendo</option>
+          <option value="lido">Lido</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="filtro-faixa">Faixa de páginas</label>
+        <select id="filtro-faixa"></select>
+      </div>
+      <div class="campo">
+        <label for="filtro-cadastro">Data de cadastro</label>
+        <select id="filtro-cadastro"></select>
+      </div>
+      <div class="campo">
+        <label for="filtro-ordenar">Ordenação</label>
+        <select id="filtro-ordenar"></select>
+      </div>
+    </section>
+
+    <div class="linha-filtros">
+      <span id="filtros-ativos">Nenhum filtro ativo</span>
+      <button id="limpar" type="button" class="link">Limpar filtros</button>
+    </div>
+
+    <p id="contagem" class="resumo-lista"></p>
+    <p id="erro-global" class="erro" hidden></p>
+
+    <section id="lista" class="grade"></section>
+    <p id="vazio" class="vazio" hidden>Nenhum livro encontrado com os filtros atuais.</p>
+
+    <div class="mais">
+      <button id="carregar-mais" type="button" hidden>Carregar mais</button>
+    </div>
+  </main>
+
+  <!-- Barra de seleção para exportação -->
+  <div id="barra-selecao" class="barra-selecao" hidden>
+    <span id="contador-selecao"></span>
+    <button id="exportar-abrir" type="button">Exportar .doc</button>
+    <button id="limpar-selecao" type="button">Limpar seleção</button>
+  </div>
+
+  <!-- Detalhes do livro -->
+  <dialog id="detalhe" class="modal" aria-labelledby="detalhe-titulo">
+    <div class="modal-conteudo">
+      <header class="modal-cab">
+        <h2 id="detalhe-titulo"></h2>
+        <button type="button" class="fechar" data-fechar="detalhe" aria-label="Fechar">×</button>
+      </header>
+      <div id="detalhe-corpo"></div>
+    </div>
+  </dialog>
+
+  <!-- Cadastro e edição -->
+  <dialog id="livro" class="modal" aria-labelledby="livro-titulo">
+    <div class="modal-conteudo">
+      <header class="modal-cab">
+        <h2 id="livro-titulo">Novo livro</h2>
+        <button type="button" class="fechar" data-fechar="livro" aria-label="Fechar">×</button>
+      </header>
+
+      <form id="form-livro" class="formulario">
+        <label>
+          Título *
+          <input name="titulo" required>
+        </label>
+
+        <div class="linha">
+          <label>
+            ISBN
+            <input name="isbn" placeholder="10 ou 13 dígitos">
+          </label>
+          <div class="campo-botao">
+            <button type="button" id="buscar-isbn">Buscar dados pelo ISBN</button>
+          </div>
+        </div>
+        <p id="isbn-status" class="ajuda"></p>
+
+        <div class="linha">
+          <label>
+            Autor
+            <input name="autor">
+          </label>
+          <label>
+            Editora
+            <input name="editora">
+          </label>
+        </div>
+
+        <div class="linha">
+          <label>
+            Gênero
+            <input name="genero" list="lista-generos">
+          </label>
+          <label>
+            Localização física
+            <input name="localizacao" placeholder="Ex.: Estante B, prateleira 3">
+          </label>
+        </div>
+        <datalist id="lista-generos"></datalist>
+
+        <div class="linha">
+          <label>
+            Ano
+            <input name="ano" type="number" min="1000" max="2100">
+          </label>
+          <label>
+            Páginas
+            <input name="paginas" type="number" min="1" max="100000">
+          </label>
+        </div>
+
+        <div class="linha">
+          <label>
+            Idioma
+            <input name="idioma" value="Português">
+          </label>
+          <label>
+            Tags (separadas por vírgula)
+            <input name="tags" placeholder="segurança, lubrificação">
+          </label>
+        </div>
+
+        <div class="bloco-emprestimo">
+          <label class="caixa">
+            <input type="checkbox" name="emprestado">
+            <span>Livro emprestado</span>
+          </label>
+          <label>
+            Emprestado para
+            <input name="emprestado_para" placeholder="Nome de quem está com o livro">
+          </label>
+        </div>
+
+        <label>
+          URL da capa (opcional)
+          <input name="capa_url" type="url" placeholder="https://...">
+        </label>
+
+        <label>
+          Descrição
+          <textarea name="descricao" rows="3"></textarea>
+        </label>
+
+        <p id="erro-form" class="erro" hidden></p>
+
+        <div class="acoes-modal">
+          <button type="button" data-fechar="livro">Cancelar</button>
+          <button type="submit" id="salvar-livro" class="primario">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Seleção final para exportação -->
+  <dialog id="exportar" class="modal" aria-labelledby="exportar-titulo">
+    <div class="modal-conteudo">
+      <header class="modal-cab">
+        <h2 id="exportar-titulo">Exportar livros</h2>
+        <button type="button" class="fechar" data-fechar="exportar" aria-label="Fechar">×</button>
+      </header>
+      <p class="ajuda">Desmarque os livros que não devem entrar no arquivo.</p>
+      <div id="lista-exportar" class="lista-exportar"></div>
+      <p id="erro-exportar" class="erro" hidden></p>
+      <div class="acoes-modal">
+        <button type="button" data-fechar="exportar">Cancelar</button>
+        <button type="button" id="exportar-gerar" class="primario">Gerar arquivo .doc</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
