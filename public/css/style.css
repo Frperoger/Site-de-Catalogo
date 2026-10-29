@@ -1,8 +1,8 @@
 /* Tema floral, valores estimados a partir da imagem de referência */
 :root {
   --fundo: hsl(26, 65%, 95%);
-  --superficie: rgb(255 253 251 / 78%);
-  --texto: #4a3b38;
+  --superficie: rgb(255 253 251);
+  --texto: #66514d;
   --texto-suave: #8a7c78;
   --borda: #d1c9c6;
   --borda-leve: #e6dfdc;
@@ -30,6 +30,41 @@ body {
   background: var(--fundo);
 }
 
+/* ---------- Ilustração de fundo: ramos botânicos florais nas laterais ---------- */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  bottom: 0;
+  width: clamp(140px, 15vw, 220px);
+  height: 85vh;
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: contain;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Lateral esquerda: Ramo botânico fluido */
+body::before {
+  left: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 600' fill='none' stroke='%238A9A8B' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M 40 600 Q 90 470 40 320 Q -10 170 60 0'/%3E%3Cpath d='M 65 500 Q 120 480 130 430'/%3E%3Cpath d='M 50 360 Q 110 330 100 280'/%3E%3Cpath d='M 20 220 Q 70 190 60 140'/%3E%3Cpath d='M 35 90 Q 90 65 85 20'/%3E%3Cpath d='M 130 430 Q 155 410 145 390 Q 115 410 130 430 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 100 280 Q 130 260 120 240 Q 90 260 100 280 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 60 140 Q 90 120 80 100 Q 50 120 60 140 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 65 500 Q 35 480 25 460 Q 50 480 65 500 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 50 360 Q 20 340 10 320 Q 35 340 50 360 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 20 220 Q -5 200 -15 180 Q 5 200 20 220 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Ccircle cx='130' cy='430' r='5' fill='%23E3BEBE' stroke='%23C98B8B' stroke-width='1'/%3E%3Ccircle cx='100' cy='280' r='5' fill='%23E3BEBE' stroke='%23C98B8B' stroke-width='1'/%3E%3Ccircle cx='60' cy='140' r='5' fill='%23E3BEBE' stroke='%23C98B8B' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+/* Lateral direita: mesmo ramo espelhado organicamente */
+body::after {
+  right: 0;
+  transform: scaleX(-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 600' fill='none' stroke='%238A9A8B' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M 40 600 Q 90 470 40 320 Q -10 170 60 0'/%3E%3Cpath d='M 65 500 Q 120 480 130 430'/%3E%3Cpath d='M 50 360 Q 110 330 100 280'/%3E%3Cpath d='M 20 220 Q 70 190 60 140'/%3E%3Cpath d='M 35 90 Q 90 65 85 20'/%3E%3Cpath d='M 130 430 Q 155 410 145 390 Q 115 410 130 430 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 100 280 Q 130 260 120 240 Q 90 260 100 280 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 60 140 Q 90 120 80 100 Q 50 120 60 140 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 65 500 Q 35 480 25 460 Q 50 480 65 500 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 50 360 Q 20 340 10 320 Q 35 340 50 360 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Cpath d='M 20 220 Q -5 200 -15 180 Q 5 200 20 220 Z' fill='%238A9A8B' fill-opacity='0.15'/%3E%3Ccircle cx='130' cy='430' r='5' fill='%23E3BEBE' stroke='%23C98B8B' stroke-width='1'/%3E%3Ccircle cx='100' cy='280' r='5' fill='%23E3BEBE' stroke='%23C98B8B' stroke-width='1'/%3E%3Ccircle cx='60' cy='140' r='5' fill='%23E3BEBE' stroke='%23C98B8B' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+/* Em telas estreitas a lateral não tem espaço, então o desenho é ocultado */
+@media (max-width: 1100px) {
+  body::before,
+  body::after { display: none; }
+}
+
 h1, h2, h3 { font-family: var(--fonte-titulo); font-weight: 600; line-height: 1.2; margin: 0; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -46,7 +81,7 @@ button:hover { border-color: var(--texto-suave); }
 button:disabled { opacity: 0.6; cursor: wait; }
 button.primario { background: var(--primario); border-color: var(--primario); color: #fff; font-weight: 600; }
 button.primario:hover { background: var(--primario-hover); }
-button.link { border: none; background: none; padding: 0; color: var(--texto-suave); text-decoration: underline; }
+button.link { border-color: var(--primario); background:var(--fundo) ; padding: 0; color: var(--texto-suave);font-size: 10px;height: auto; min-height: 20px;width: auto;min-width: 80px;}
 
 button.excluir { color: #9b1c1c; border-color: #e3c4c4; background: #fff; }
 button.excluir:hover { background: #fbeaea; border-color: #9b1c1c; }
@@ -151,8 +186,106 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
 .metrica:hover { border-color: var(--texto-suave); }
 .metrica[aria-pressed="true"] { border-color: var(--primario); background: var(--destaque); }
 .metrica strong { font-family: var(--fonte-titulo); font-size: 2rem; font-weight: 600; line-height: 1; }
-.metrica span { font-size: 0.85rem; color: var(--texto-suave); }
+.metrica span { font-size: 0.85rem;}
 
+/* Remove a faixa de pills de gênero (o JS continua funcionando) */
+#pills-generos { display: none !important; }
+
+/* Cards de métricas com gradiente: vermelho, verde, amarelo, azul e roxo */
+#metricas .metrica {
+  color: #fff;
+  border-color: var(--borda-leve);
+  box-shadow: 0 2px 10px rgba(74, 59, 56, 0.12);
+  color: #3e2f00;
+}
+#metricas .metrica:hover { filter: brightness(1.05); border: none; }
+#metricas .metrica span { color: rgba(255, 255, 255, 0.92); }
+
+/* 1 - Livros no acervo: vermelho */
+#metricas .metrica:nth-child(1) { background: linear-gradient(135deg, #ffe2e7, #ffffff); }
+#metricas .metrica:nth-child(1) span { color: rgba(62, 47, 0, 0.85); }
+/* 2 - Já lidos: verde */
+#metricas .metrica:nth-child(2) { background: linear-gradient(135deg, #dfffea, #ffffff); }
+#metricas .metrica:nth-child(2) span { color: rgba(62, 47, 0, 0.85); }
+/* 3 - Em leitura: amarelo */
+#metricas .metrica:nth-child(3) { background: linear-gradient(135deg, #fffee3, #ffffff); }
+#metricas .metrica:nth-child(3) span { color: rgba(62, 47, 0, 0.85); }
+/* 4 - Favoritos: azul */
+#metricas .metrica:nth-child(4) { background: linear-gradient(135deg, #d7eaff, #ffffff); }
+#metricas .metrica:nth-child(4) span { color: rgba(62, 47, 0, 0.85); }
+/* 5 - Emprestados: roxo */
+#metricas .metrica:nth-child(5) { background: linear-gradient(135deg, #f6dcff, #ffffff); }
+#metricas .metrica:nth-child(5) span { color: rgba(62, 47, 0, 0.85); }
+/* Estado selecionado: anel branco, sem trocar a cor do gradiente */
+#metricas .metrica[aria-pressed="true"] {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--borda);
+  background-blend-mode: normal;
+}
+#metricas .metrica:nth-child(3)[aria-pressed="true"] { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--primario); }
+
+/* ---------- Ilustrações em CSS nos cards de filtro ---------- */
+#metricas .metrica .arte {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 0.25rem;
+  color: #fff;
+}
+#metricas .metrica:nth-child(3) .arte { color: #3e2f00; }
+
+/* 1 - Livros no acervo: livro aberto */
+#metricas .arte-livros {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='100% ' height='100% ' fill='none' stroke='%237A5656' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'%3E%3C/path%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 28px 28px;
+}
+
+/* 2 - Já lidos: selo com check */
+#metricas .arte-check {
+  border: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='100% ' height='100% ' fill='none' stroke='%237A5656' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cpath d='m9 12 2 2 4-4'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 28px 28px;
+}
+/* Remove o pseudo-elemento antigo para evitar conflito */
+#metricas .arte-check::after {
+  content: none;
+}
+
+/* 3 - Em leitura: marcador de página */
+#metricas .arte-marca {
+  width: auto;
+  height: auto;
+  left: auto;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='100% ' height='100% ' fill='none' stroke='%237A5656' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 26px 26px;
+}
+
+/* 4 - Flor do card de favoritos: mesmo desenho da avaliação */
+#metricas .arte-flor-svg {
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 0.25rem;
+}
+
+#metricas .arte-flor-svg .miolo { fill: #ffdb4c; }
+#metricas .metrica:nth-child(3) .arte-flor-svg .petala { fill: #3e2f00; stroke: rgba(62, 47, 0, 0.5); }
+#metricas .metrica:nth-child(3) .arte-flor-svg .miolo { fill: #fff3c4; }
+#metricas .metrica:nth-child(3) .arte-flor::after { background: rgba(255, 255, 255, 0.7); }
+
+/* 5 - Emprestados: duas pessoas */
+#metricas .arte-pessoas {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='100% ' height='100% ' fill='none' stroke='%237A5656' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='9' cy='7' r='4'%3E%3C/circle%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'%3E%3C/path%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 30px 30px;
+}
 /* ---------- Pills de gênero ---------- */
 .pills { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
 .pill { padding: 0.35rem 0.9rem; font-size: 0.85rem; }
@@ -174,11 +307,11 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
 }
 .barra-filtros label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: var(--texto-suave);
   margin-bottom: 0.3rem;
 }
-.barra-filtros select { padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+.barra-filtros select { padding: 0.5rem 0.7rem; font-size: 0.8rem; }
 
 .linha-filtros {
   display: flex;
@@ -256,6 +389,145 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
 .badge.favorito { background: #f5ecd2; color: #7a5c1e; border-color: transparent; }
 .badge.emprestado { background: #f3dcd0; color: #8a4b32; border-color: transparent; }
 
+/* ---------- Detalhe: badges de status em destaque ---------- */
+.detalhe-topo .badges { margin-bottom: 0.7rem; }
+/* ---------- Badge de favorito com flor ---------- */
+.badge.favorito {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.badge.favorito .flor { flex: 0 0 auto; }
+/* ---------- Flores (favorito e avaliação) ---------- */
+.flor .petala { fill: #e8b4b8; stroke: #b07a7e; stroke-width: 1.2; }
+.flor .miolo { fill: #fdec53; }
+.flor.vazia .petala { fill: transparent; stroke: #c9b3b0; }
+
+.flores-avaliacao { display: flex; align-items: center; gap: 0.35rem; }
+.flor-btn {
+  padding: 0.15rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  line-height: 0;
+}
+.flor-btn:hover { background: transparent; transform: scale(1.15); }
+.flor-btn:focus-visible { outline-offset: 3px; }
+/* ---------- Avaliação com flores nos cards ---------- */
+.flores-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  margin-top: 0.1rem;
+}
+
+/* ---------- Filtro de avaliação com flores ---------- */
+.filtro-flores { position: relative; }
+
+.gatilho-flores {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  text-align: left;
+}
+.gatilho-flores .seta { color: var(--texto-suave); font-size: 0.8rem; }
+
+.flores-opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  line-height: 0;
+}
+.flores-opcao .rotulo-opcao {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--texto);
+}
+
+.opcoes-flores {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.35rem;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(74, 59, 56, 0.15);
+}
+.opcao-flor {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+}
+.opcao-flor:hover,
+.opcao-flor[aria-selected="true"] { background: var(--destaque); }
+
+.divisor-floral {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 35px 0; /* Espaçamento superior e inferior do divisor */
+  gap: 16px;      /* Espaço entre as linhas e a flor central */
+}
+
+.linha-divisor {
+  flex: 1;
+  height: 1px;
+  background-color: var(--primario, #7A5656); /* Utiliza a cor primária suave do tema */
+  opacity: 0.35; /* Deixa a linha com aspecto leve de lineart */
+}
+
+.flor-divisor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.campo-avaliacao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+.campo-avaliacao .ajuda { margin: 0; }
+
+button.com-flor { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+/* ---------- Empréstimo: botão desabilitado sem nome ---------- */
+.bloco-emprestimo button:disabled { cursor: not-allowed; }
+
+/* ---------- Livros relacionados com capa ---------- */
+.relacionado {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  text-align: left;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+}
+.capa-mini { aspect-ratio: 3 / 4; font-size: 1.4rem; border-radius: 6px; }
+.relacionado .rel-titulo { line-height: 1.25; }
+
 .estrelas { display: inline-flex; gap: 0.1rem; color: #c9a24a; font-size: 0.95rem; }
 .estrelas .vazia { color: var(--borda); }
 
@@ -314,7 +586,6 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
 .modal-cab h2 { font-size: 1.6rem; }
 .fechar {
   border: none;
-  background: transparent;
   font-size: 1.6rem;
   line-height: 1;
   padding: 0 0.3rem;
@@ -350,7 +621,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
   font-size: 0.8rem;
   color: var(--texto-suave);
 }
-.descricao { line-height: 1.7; }
+.descricao { line-height: auto ;font-size: 11px; }
 .acoes-detalhe {
   display: flex;
   flex-wrap: wrap;
@@ -381,8 +652,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
 /* ---------- Formulário ---------- */
 .formulario .linha {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr auto;
   gap: 0.8rem;
+  align-items: flex-end;
 }
 .formulario label {
   display: flex;
@@ -395,7 +667,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 1.75rem 2rem 3rem; }
 .formulario label input,
 .formulario label select,
 .formulario label textarea { color: var(--texto); }
-.campo-botao { display: flex; align-items: flex-end; margin-bottom: 0.8rem; }
+.campo-botao { display: flex; align-items: flex-end; margin-bottom: 0.8rem;}
 .campo-botao button { width: 100%; }
 
 .bloco-emprestimo {

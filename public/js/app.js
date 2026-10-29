@@ -4,13 +4,13 @@
   const STATUS_ROTULO = { nao_lido: "Não lido", lendo: "Lendo", lido: "Lido" };
   const LIMITE = 50;
   const FAIXAS = [
-    ["", "Qualquer número de páginas"],
+    ["", "Qualquer"],
     ["ate200", "Até 200 páginas"],
     ["de200a400", "201 a 400 páginas"],
     ["mais400", "Mais de 400 páginas"],
   ];
   const JANELAS = [
-    ["", "Qualquer data"],
+    ["", "Qualquer"],
     ["7", "Últimos 7 dias"],
     ["30", "Últimos 30 dias"],
     ["365", "Último ano"],
@@ -152,7 +152,11 @@
   function criarBadges(livro) {
     const area = criar("div", "badges");
     area.appendChild(criar("span", `badge ${livro.status}`, STATUS_ROTULO[livro.status]));
-    if (livro.favorito) area.appendChild(criar("span", "badge favorito", "★ Favorito"));
+    if (livro.favorito) {
+      const badgeFavorito = criar("span", "badge favorito");
+      badgeFavorito.append(criarFlor(true, 14), document.createTextNode("Favorito"));
+      area.appendChild(badgeFavorito);
+    }
     if (livro.emprestado) area.appendChild(criar("span", "badge emprestado", "Emprestado"));
     return area;
   }
@@ -164,10 +168,10 @@
   }
 
   function criarEstrelas(nota) {
-    const area = criar("span", "estrelas");
-    area.setAttribute("aria-label", `${nota} de 5 estrelas`);
+    const area = criar("span", "flores-card");
+    area.setAttribute("aria-label", `${nota} de 5 flores`);
     for (let i = 1; i <= 5; i++) {
-      area.appendChild(criar("span", i <= nota ? "" : "vazia", "★"));
+      area.appendChild(criarFlor(i <= nota, 16));
     }
     return area;
   }
@@ -202,18 +206,24 @@
   function renderMetricas() {
     const f = resumoFiltros;
     const itens = [
-      ["todos", numero(f.total), "livros no acervo", !estado.status && !estado.favorito && !estado.emprestado],
-      ["lido", numero(f.lidos), "já lidos", estado.status === "lido"],
-      ["lendo", numero(f.lendo), "em leitura", estado.status === "lendo"],
-      ["favorito", numero(f.favoritos), "favoritos", estado.favorito],
-      ["emprestado", numero(f.emprestados), "emprestados", estado.emprestado],
+      ["todos", "arte-livros", numero(f.total), "Livros no acervo", !estado.status && !estado.favorito && !estado.emprestado],
+      ["lido", "arte-check", numero(f.lidos), "Já lidos", estado.status === "lido"],
+      ["lendo", "arte-marca", numero(f.lendo), "Em leitura", estado.status === "lendo"],
+      ["favorito", "arte-flor", numero(f.favoritos), "Favoritos", estado.favorito],
+      ["emprestado", "arte-pessoas", numero(f.emprestados), "Emprestados", estado.emprestado],
     ];
 
-    $("metricas").replaceChildren(...itens.map(([chave, n, rotulo, ativo]) => {
+    $("metricas").replaceChildren(...itens.map(([chave, arte, n, rotulo, ativo]) => {
       const b = criar("button", "metrica");
       b.type = "button";
       b.setAttribute("aria-pressed", String(ativo));
-      b.append(criar("strong", "", n), criar("span", "", rotulo));
+
+      const ilustracao = arte === "arte-flor"
+        ? criarFlor(true, 34)
+        : criar("span", `arte ${arte}`);
+      if (arte === "arte-flor") ilustracao.classList.add("arte", "arte-flor-svg");
+
+      b.append(ilustracao, criar("strong", "", n), criar("span", "", rotulo));
       b.addEventListener("click", () => alternarMetrica(chave));
       return b;
     }));
@@ -251,6 +261,7 @@
       renderPills();
     }
     atualizarResumoFiltros();
+    renderGatilhoFlores();
   }
 
   function alterarFiltro(mudanca) {
@@ -287,7 +298,7 @@
   function popularGeneros(f) {
     const generos = normalizarGeneros(f.generos);
     $("filtro-genero").replaceChildren(
-      criarOpcao("", "Todos os gêneros"),
+      criarOpcao("", "Todos"),
       ...generos.map(g => criarOpcao(g.nome))
     );
     $("lista-generos").replaceChildren(...generos.map(g => criarOpcao(g.nome, "")));
@@ -445,7 +456,70 @@
     }
   }
 
-  // ---------- Detalhes ----------
+   // ---------- Detalhes ----------
+
+  const NS_SVG = "http://www.w3.org/2000/svg";
+
+  // Flor de cinco pétalas, no mesmo estilo do logo. "vazia" mostra só o contorno.
+  function criarFlor(preenchida = true, tamanho = 18) {
+    const svg = document.createElementNS(NS_SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 40 40");
+    svg.setAttribute("width", String(tamanho));
+    svg.setAttribute("height", String(tamanho));
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", preenchida ? "flor" : "flor vazia");
+
+    for (let i = 0; i < 5; i++) {
+      const petala = document.createElementNS(NS_SVG, "ellipse");
+      petala.setAttribute("class", "petala");
+      petala.setAttribute("cx", "20");
+      petala.setAttribute("cy", "11");
+      petala.setAttribute("rx", "6");
+      petala.setAttribute("ry", "9");
+      petala.setAttribute("transform", `rotate(${i * 72} 20 20)`);
+      svg.appendChild(petala);
+    }
+
+    const miolo = document.createElementNS(NS_SVG, "circle");
+    miolo.setAttribute("class", "miolo");
+    miolo.setAttribute("cx", "20");
+    miolo.setAttribute("cy", "20");
+    miolo.setAttribute("r", "4.5");
+    svg.appendChild(miolo);
+
+    return svg;
+  }
+
+  // Cinco flores clicáveis. Clicar na nota atual zera a avaliação.
+  function criarAvaliacaoFlores(livro) {
+    const area = criar("div", "campo-avaliacao");
+    area.appendChild(criar("span", "", "Avaliação"));
+
+    const flores = criar("div", "flores-avaliacao");
+    flores.setAttribute("role", "radiogroup");
+    flores.setAttribute("aria-label", "Avaliação do livro");
+
+    for (let n = 1; n <= 5; n++) {
+      const b = criar("button", "flor-btn");
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", String(n === livro.avaliacao));
+      b.setAttribute("aria-label", `${n} ${n === 1 ? "flor" : "flores"}`);
+      b.title = `${n} ${n === 1 ? "flor" : "flores"}`;
+      b.appendChild(criarFlor(n <= livro.avaliacao, 26));
+      b.addEventListener("click", () => {
+        const nova = n === livro.avaliacao ? 0 : n;
+        atualizarEstado(livro.id, { avaliacao: nova });
+      });
+      flores.appendChild(b);
+    }
+
+    area.append(
+      flores,
+      criar("span", "ajuda", livro.avaliacao ? `${livro.avaliacao} de 5` : "Sem avaliação")
+    );
+    return area;
+  }
 
   async function abrirDetalhe(id) {
     try {
@@ -480,8 +554,9 @@
       );
     }
 
+    // Status (lido, lendo, não lido) aparece antes dos demais dados
     const info = criar("div");
-    info.append(dl, criarBadges(livro));
+    info.append(criarBadges(livro), dl);
 
     const topo = criar("div", "detalhe-topo");
     topo.append(criarCapa(livro), info);
@@ -505,32 +580,27 @@
     selStatus.value = livro.status;
     selStatus.addEventListener("change", () => atualizarEstado(livro.id, { status: selStatus.value }));
 
-    const selNota = criar("select");
-    selNota.appendChild(criarOpcao("0", "Sem avaliação"));
-    for (let n = 1; n <= 5; n++) {
-      selNota.appendChild(criarOpcao(String(n), `${n} ${n === 1 ? "estrela" : "estrelas"}`));
-    }
-    selNota.value = String(livro.avaliacao);
-    selNota.addEventListener("change", () => atualizarEstado(livro.id, { avaliacao: Number(selNota.value) }));
-
     const rotuloStatus = criar("label");
     rotuloStatus.append("Status de leitura", selStatus);
-    const rotuloNota = criar("label");
-    rotuloNota.append("Avaliação", selNota);
 
-    area.append(rotuloStatus, rotuloNota);
+    area.append(rotuloStatus, criarAvaliacaoFlores(livro));
     return area;
   }
 
   function criarAcoesLivro(livro) {
     const area = criar("div");
 
+    const btnFavorito = criar("button", "com-flor");
+    btnFavorito.type = "button";
+    btnFavorito.append(
+      criarFlor(livro.favorito, 18),
+      document.createTextNode(livro.favorito ? " Remover favorito" : " Marcar como favorito")
+    );
+    btnFavorito.addEventListener("click", () => atualizarEstado(livro.id, { favorito: !livro.favorito }));
+
     const acoes = criar("div", "acoes-detalhe");
     acoes.append(
-      botao(
-        livro.favorito ? "★ Remover dos favoritos" : "☆ Marcar como favorito",
-        () => atualizarEstado(livro.id, { favorito: !livro.favorito })
-      ),
+      btnFavorito,
       botao(
         selecionados.has(livro.id) ? "Remover da exportação" : "Adicionar à exportação",
         () => {
@@ -557,12 +627,17 @@
       campo.type = "text";
       campo.maxLength = 100;
       campo.placeholder = "Nome de quem está com o livro";
-      bloco.append(
-        campo,
-        botao("Registrar empréstimo", () =>
-          atualizarEstado(livro.id, { emprestado: true, emprestado_para: campo.value.trim() })
-        )
+
+      // O botão só é habilitado quando há um nome digitado
+      const btnEmprestar = botao("Registrar empréstimo", () =>
+        atualizarEstado(livro.id, { emprestado: true, emprestado_para: campo.value.trim() })
       );
+      btnEmprestar.disabled = true;
+      campo.addEventListener("input", () => {
+        btnEmprestar.disabled = !campo.value.trim();
+      });
+
+      bloco.append(campo, btnEmprestar);
       emprestimo.appendChild(bloco);
     }
     area.appendChild(emprestimo);
@@ -570,10 +645,19 @@
     return area;
   }
 
+  // Cada livro relacionado mostra a capa e o título
   function criarRelacionados(itens) {
     if (!itens.length) return criar("p", "ajuda", "Nenhum livro relacionado por autor ou gênero.");
     const area = criar("div", "relacionados");
-    itens.forEach(r => area.appendChild(botao(r.titulo, () => abrirDetalhe(r.id))));
+    itens.forEach(r => {
+      const b = criar("button", "relacionado");
+      b.type = "button";
+      const capa = criarCapa(r);
+      capa.classList.add("capa-mini");
+      b.append(capa, criar("span", "rel-titulo", r.titulo));
+      b.addEventListener("click", () => abrirDetalhe(r.id));
+      area.appendChild(b);
+    });
     return area;
   }
 
@@ -760,11 +844,106 @@
     b.addEventListener("click", () => $(b.dataset.fechar).close());
   });
 
+    // ---------- Filtro de avaliação com flores ----------
+
+  const OPCOES_AVALIACAO = [
+    { valor: "", rotulo: "Qualquer avaliação" },
+    { valor: "sem", rotulo: "Sem avaliação" },
+    { valor: "1", rotulo: "1 flor" },
+    { valor: "2", rotulo: "2 flores" },
+    { valor: "3", rotulo: "3 flores" },
+    { valor: "4", rotulo: "4 flores" },
+    { valor: "5", rotulo: "5 flores" },
+  ];
+
+  let renderGatilhoFlores = () => {};
+
+  // Conteúdo visual de uma opção: texto para "qualquer" e "sem", flores para 1 a 5
+  function conteudoAvaliacao(valor) {
+    const conteudo = criar("span", "flores-opcao");
+    if (valor === "" || valor === "sem") {
+      const texto = valor === "" ? "Qualquer avaliação" : "Sem avaliação";
+      conteudo.appendChild(criar("span", "rotulo-opcao", texto));
+      return conteudo;
+    }
+    for (let i = 0; i < Number(valor); i++) {
+      conteudo.appendChild(criarFlor(true, 18));
+    }
+    return conteudo;
+  }
+
+  // Substitui o select visualmente. O select continua existindo e guarda o valor do filtro.
+  function montarFiltroFlores() {
+    const select = $("filtro-avaliacao");
+    select.hidden = true;
+    select.tabIndex = -1;
+
+    const wrap = criar("div", "filtro-flores");
+    const gatilho = criar("button", "gatilho-flores");
+    gatilho.type = "button";
+    gatilho.setAttribute("aria-haspopup", "listbox");
+    gatilho.setAttribute("aria-expanded", "false");
+
+    const seta = criar("span", "seta", "▾");
+    const lista = criar("div", "opcoes-flores");
+    lista.setAttribute("role", "listbox");
+    lista.hidden = true;
+
+    function fecharLista() {
+      lista.hidden = true;
+      gatilho.setAttribute("aria-expanded", "false");
+    }
+
+    OPCOES_AVALIACAO.forEach(({ valor, rotulo }) => {
+      const op = criar("button", "opcao-flor");
+      op.type = "button";
+      op.setAttribute("role", "option");
+      op.dataset.valor = valor;
+      op.title = rotulo;
+      op.setAttribute("aria-label", rotulo);
+      op.appendChild(conteudoAvaliacao(valor));
+      op.addEventListener("click", () => {
+        fecharLista();
+        if (select.value === valor) return;
+        select.value = valor;
+        select.dispatchEvent(new Event("change"));
+      });
+      lista.appendChild(op);
+    });
+
+    renderGatilhoFlores = function () {
+      const valor = select.value;
+      const opcao = OPCOES_AVALIACAO.find(o => o.valor === valor) || OPCOES_AVALIACAO[0];
+      gatilho.replaceChildren(conteudoAvaliacao(opcao.valor), seta);
+      gatilho.setAttribute("aria-label", `Avaliação: ${opcao.rotulo}`);
+      lista.querySelectorAll(".opcao-flor").forEach(o =>
+        o.setAttribute("aria-selected", String(o.dataset.valor === valor))
+      );
+    };
+
+    gatilho.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const abrir = lista.hidden;
+      lista.hidden = !abrir;
+      gatilho.setAttribute("aria-expanded", String(abrir));
+    });
+    document.addEventListener("click", ev => {
+      if (!wrap.contains(ev.target)) fecharLista();
+    });
+    document.addEventListener("keydown", ev => {
+      if (ev.key === "Escape") fecharLista();
+    });
+
+    wrap.append(gatilho, lista);
+    select.insertAdjacentElement("afterend", wrap);
+    renderGatilhoFlores();
+  }
   // ---------- Inicialização ----------
 
   preencherSelect("filtro-faixa", FAIXAS);
   preencherSelect("filtro-cadastro", JANELAS);
   preencherSelect("filtro-ordenar", ORDENACOES);
+  montarFiltroFlores();
   sincronizarControles();
 
   (async () => {

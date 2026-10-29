@@ -72,10 +72,27 @@
       <p>Um catálogo para organizar o que você lê, quer ler e já leu.</p>
     </section>
 
+<div class="divisor-floral" aria-hidden="true">
+  <span class="linha-divisor"></span>
+  <span class="flor-divisor">
+    <!-- SVG ajustado conforme o modelo de referência (folhas superiores e círculo central) -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none">
+      <!-- Raminho / folhas duplas superiores em lineart -->
+      <path d="M 12 14 Q 9 9 7 11 Q 6 13 10 14 Z" stroke="#8A9A8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 12 14 Q 15 9 17 11 Q 18 13 14 14 Z" stroke="#8A9A8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Círculo central em tom rosa suave -->
+      <circle cx="12" cy="17" r="3.2" fill="#E3BEBE" stroke="#C98B8B" stroke-width="1"/>
+    </svg>
+  </span>
+  <span class="linha-divisor"></span>
+</div>
+
     <section id="metricas" class="metricas" aria-label="Resumo do acervo. Clique para filtrar."></section>
 
     <div id="pills-generos" class="pills" aria-label="Filtrar por gênero"></div>
-
+    <div class="linha-filtros">
+      <span id="filtros-ativos">Nenhum filtro ativo</span>
+    </div>
     <section class="barra-filtros" aria-label="Filtros">
       <div class="campo">
         <label for="filtro-genero">Gênero</label>
@@ -84,7 +101,7 @@
       <div class="campo">
         <label for="filtro-status">Status de leitura</label>
         <select id="filtro-status">
-          <option value="">Todos os status</option>
+          <option value="">Todos</option>
           <option value="nao_lido">Não lido</option>
           <option value="lendo">Lendo</option>
           <option value="lido">Lido</option>
@@ -93,7 +110,7 @@
       <div class="campo">
         <label for="filtro-avaliacao">Avaliação</label>
         <select id="filtro-avaliacao">
-          <option value="">Qualquer avaliação</option>
+          <option value="">Qualquer</option>
           <option value="sem">Sem avaliação</option>
           <option value="1">1 estrela</option>
           <option value="2">2 estrelas</option>
@@ -114,12 +131,10 @@
         <label for="filtro-ordenar">Ordenação</label>
         <select id="filtro-ordenar"></select>
       </div>
+      <div>      
+        <button id="limpar" type="button" class="link">Limpar filtros</button>
+      </div>
     </section>
-
-    <div class="linha-filtros">
-      <span id="filtros-ativos">Nenhum filtro ativo</span>
-      <button id="limpar" type="button" class="link">Limpar filtros</button>
-    </div>
 
     <p id="contagem" class="resumo-lista"></p>
     <p id="erro-global" class="erro" hidden></p>
@@ -162,11 +177,6 @@
       </header>
 
       <form id="form-livro" class="formulario">
-        <label>
-          Título *
-          <input name="titulo" required>
-        </label>
-
         <div class="linha">
           <label>
             ISBN
@@ -177,6 +187,11 @@
           </div>
         </div>
         <p id="isbn-status" class="ajuda"></p>
+
+        <label>
+          Título
+          <input name="titulo" required>
+        </label>
 
         <div class="linha">
           <label>
@@ -219,7 +234,7 @@
           </label>
           <label>
             Tags (separadas por vírgula)
-            <input name="tags" placeholder="segurança, lubrificação">
+            <input name="tags" placeholder="assassinato, encontro">
           </label>
         </div>
 
