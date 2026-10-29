@@ -29,6 +29,7 @@
     genero: "",
     favorito: false,
     emprestado: false,
+    avaliacao: "",
     faixa: "",
     cadastro: "",
     ordenar: "titulo",
@@ -178,7 +179,8 @@
   }
 
   function contarFiltrosAtivos() {
-    const textuais = ["q", "status", "genero", "faixa", "cadastro"].filter(k => estado[k]).length;
+    const textuais = ["q", "status", "genero", "avaliacao", "faixa", "cadastro"]
+      .filter(k => estado[k]).length;
     return textuais + (estado.favorito ? 1 : 0) + (estado.emprestado ? 1 : 0);
   }
 
@@ -190,6 +192,7 @@
   function sincronizarControles() {
     $("filtro-genero").value = estado.genero;
     $("filtro-status").value = estado.status;
+    $("filtro-avaliacao").value = estado.avaliacao;
     $("filtro-faixa").value = estado.faixa;
     $("filtro-cadastro").value = estado.cadastro;
     $("filtro-ordenar").value = estado.ordenar;
@@ -272,7 +275,8 @@
   function limparFiltros() {
     clearTimeout(timerBusca);
     Object.assign(estado, {
-      q: "", status: "", genero: "", favorito: false, emprestado: false, faixa: "", cadastro: "",
+      q: "", status: "", genero: "", favorito: false, emprestado: false,
+      avaliacao: "", faixa: "", cadastro: "",
     });
     $("busca").value = "";
     sincronizarControles();
@@ -344,6 +348,7 @@
         genero: estado.genero,
         favorito: estado.favorito ? "1" : "",
         emprestado: estado.emprestado ? "1" : "",
+        avaliacao: estado.avaliacao,
         ordenar: estado.ordenar,
         faixa: estado.faixa,
         cadastro: estado.cadastro,
@@ -720,6 +725,9 @@
   );
   $("filtro-status").addEventListener("change", () =>
     alterarFiltro(() => { estado.status = $("filtro-status").value; })
+  );
+  $("filtro-avaliacao").addEventListener("change", () =>
+    alterarFiltro(() => { estado.avaliacao = $("filtro-avaliacao").value; })
   );
   $("filtro-faixa").addEventListener("change", () =>
     alterarFiltro(() => { estado.faixa = $("filtro-faixa").value; })

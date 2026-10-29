@@ -74,6 +74,14 @@ const FAIXAS_PAGINAS = {
 };
 const JANELAS_CADASTRO = new Set([7, 30, 365]);
 
+// Filtro de avaliação: "sem" = sem nota; "1" a "5" = nota mínima
+function filtroAvaliacao(valor) {
+  const v = String(valor || "");
+  if (v === "sem") return { semAvaliacao: true, avaliacaoExata: null };
+  if (/^[1-5]$/.test(v)) return { semAvaliacao: false, avaliacaoExata: Number(v) };
+  return { semAvaliacao: false, avaliacaoExata: null };
+}
+
 // ---------- Filtros e listagem ----------
 
 app.get("/api/filtros", (_req, res) => {
@@ -91,6 +99,7 @@ app.get("/api/itens", (req, res) => {
     genero: String(req.query.genero || ""),
     favorito: req.query.favorito === "1",
     emprestado: req.query.emprestado === "1",
+    ...filtroAvaliacao(req.query.avaliacao),
     ordenar: String(req.query.ordenar || "titulo"),
     ...(FAIXAS_PAGINAS[req.query.faixa] || {}),
     dias: JANELAS_CADASTRO.has(cadastro) ? cadastro : null,

@@ -51,7 +51,6 @@ db.exec(`
 `);
 
 // Migração: bancos criados por versões anteriores recebem as colunas que faltam.
-// As colunas antigas (tipo, categoria, equipamento), se existirem, são ignoradas.
 function migrar() {
   const existentes = new Set(db.prepare("PRAGMA table_info(livros)").all().map(c => c.name));
   const novas = {
@@ -72,6 +71,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_livros_autor ON livros(autor);
   CREATE INDEX IF NOT EXISTS idx_livros_titulo ON livros(titulo COLLATE NOCASE);
   CREATE INDEX IF NOT EXISTS idx_livros_emprestado ON livros(emprestado);
+  CREATE INDEX IF NOT EXISTS idx_livros_avaliacao ON livros(avaliacao);
 `);
 
 // Remove acentos e caixa para que "usinagem" encontre "Usinagem"
@@ -83,9 +83,13 @@ function normalizar(texto) {
     .trim();
 }
 
+// O índice de busca inclui o nome de quem está com o livro emprestado
 function montarBusca(d) {
   return normalizar(
-    [d.titulo, d.autor, d.editora, d.genero, d.localizacao, d.isbn, d.descricao, ...d.tags].join(" ")
+    [
+      d.titulo, d.autor, d.editora, d.genero, d.localizacao, d.isbn,
+      d.descricao, d.emprestado_para, ...(d.tags ?? []),
+    ].join(" ")
   );
 }
 
@@ -100,9 +104,10 @@ function formatar(row) {
   };
 }
 
-function listar({
+// Monta as condições WHERE e os parâmetros usados tanto na contagem quanto na listagem
+function montarFiltro({
   q = "", status = "", genero = "", favorito = false, emprestado = false,
-  ordenar = "titulo", pagina = 1, limite = 50,
+  semAvaliacao = false, avaliacaoExata = null,
   paginasMin = null, paginasMax = null, dias = null,
 }) {
   const condicoes = [];
@@ -126,13 +131,21 @@ function listar({
   }
   if (favorito) condicoes.push("favorito = 1");
   if (emprestado) condicoes.push("emprestado = 1");
+
+  if (semAvaliacao) {
+    condicoes.push("avaliacao = 0");
+  } else if (avaliacaoExata !== null) {
+    condicoes.push("avaliacao = @avaliacaoExata");
+    params.avaliacaoExata = avaliacaoExata;
+  }
+
   if (paginasMin !== null) {
-    condicoes.push("paginas >= @pmin");
-    params.pmin = paginasMin;
+    condicoes.push("paginas >= @paginasMin");
+    params.paginasMin = paginasMin;
   }
   if (paginasMax !== null) {
-    condicoes.push("paginas <= @pmax");
-    params.pmax = paginasMax;
+    condicoes.push("paginas <= @paginasMax");
+    params.paginasMax = paginasMax;
   }
   if (dias !== null) {
     condicoes.push("criado_em >= datetime('now', 'localtime', @janela)");
@@ -140,9 +153,18 @@ function listar({
   }
 
   const where = condicoes.length ? `WHERE ${condicoes.join(" AND ")}` : "";
+  return { where, params };
+}
+
+function listar(opcoes = {}) {
+  const { ordenar = "titulo", pagina = 1, limite = 50 } = opcoes;
+  const { where, params } = montarFiltro(opcoes);
   const ordem = ORDENACOES[ordenar] ?? ORDENACOES.titulo;
 
-  const total = db.prepare(`SELECT COUNT(*) AS n FROM livros ${where}`).get(params).n;
+  const total = db
+    .prepare(`SELECT COUNT(*) AS n FROM livros ${where}`)
+    .get(params).n;
+
   const itens = db
     .prepare(`SELECT * FROM livros ${where} ORDER BY ${ordem} LIMIT @limite OFFSET @offset`)
     .all({ ...params, limite, offset: (pagina - 1) * limite })
@@ -234,6 +256,21 @@ function atualizar(id, d) {
   return buscarPorId(id);
 }
 
+// Recalcula o índice de busca de um livro a partir dos dados gravados
+function reindexar(id) {
+  const row = db.prepare("SELECT * FROM livros WHERE id = ?").get(id);
+  if (!row) return;
+  const tags = JSON.parse(row.tags);
+  db.prepare("UPDATE livros SET busca = @busca WHERE id = @id")
+    .run({ id, busca: montarBusca({ ...row, tags }) });
+}
+
+// Garante que livros antigos sejam encontrados pelo nome do emprestado
+function reindexarTodos() {
+  const ids = db.prepare("SELECT id FROM livros").all().map(r => r.id);
+  db.transaction(() => ids.forEach(reindexar))();
+}
+
 function atualizarEstado(id, campos) {
   const sets = [];
   const params = { id };
@@ -263,6 +300,9 @@ function atualizarEstado(id, campos) {
   if (sets.length) {
     db.prepare(`UPDATE livros SET ${sets.join(", ")}, atualizado_em = datetime('now','localtime') WHERE id = @id`)
       .run(params);
+    if (campos.emprestado !== undefined || campos.emprestado_para !== undefined) {
+      reindexar(id);
+    }
   }
   return buscarPorId(id);
 }
@@ -311,6 +351,7 @@ function semearSeNecessario() {
 }
 
 semearSeNecessario();
+reindexarTodos();
 
 module.exports = {
   STATUS,
