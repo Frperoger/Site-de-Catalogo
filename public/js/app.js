@@ -50,8 +50,10 @@
   // ---------- Utilitários ----------
 
   async function api(url, opcoes = {}) {
-    const resposta = await fetch(url, opcoes);
+    const geracao = window.Conta.geracao();
+    const resposta = await window.Conta.fetch(url, opcoes);
     const dados = await resposta.json().catch(() => ({}));
+    if (geracao !== window.Conta.geracao()) throw new DOMException("A biblioteca em uso foi alterada.", "AbortError");
     if (!resposta.ok) throw new Error(dados.erro || "Falha na comunicação com o servidor.");
     return dados;
   }
@@ -349,6 +351,7 @@
   }
 
   async function carregar({ acumular = false } = {}) {
+    if (!window.Conta.biblioteca()) return;
     const id = ++ultimaRequisicao;
     ocultarErro();
 
@@ -380,6 +383,7 @@
       $("vazio").hidden = dados.total > 0;
       $("carregar-mais").hidden = exibidos >= dados.total;
     } catch (e) {
+      if (e.name === "AbortError") return;
       mostrarErro(e.message);
     }
   }
@@ -436,7 +440,8 @@
     const botaoGerar = $("exportar-gerar");
     botaoGerar.disabled = true;
     try {
-      const resposta = await fetch("/api/exportar", {
+      const geracao = window.Conta.geracao();
+      const resposta = await window.Conta.fetch("/api/exportar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
@@ -446,9 +451,12 @@
         throw new Error(dados.erro || "Não foi possível gerar o arquivo.");
       }
       const nome = nomeDoArquivo(resposta.headers.get("Content-Disposition")) || "acervo.doc";
-      baixar(await resposta.blob(), nome);
+      const arquivo = await resposta.blob();
+      if (geracao !== window.Conta.geracao()) return;
+      baixar(arquivo, nome);
       $("exportar").close();
     } catch (e) {
+      if (e.name === "AbortError") return;
       erro.textContent = e.message;
       erro.hidden = false;
     } finally {
@@ -529,6 +537,7 @@
       renderDetalhe(livro);
       abrir($("detalhe"));
     } catch (e) {
+      if (e.name === "AbortError") return;
       mostrarErro(e.message);
     }
   }
@@ -564,7 +573,8 @@
     const blocos = [topo];
     if (livro.descricao) blocos.push(criar("p", "descricao", livro.descricao));
     if (livro.tags.length) blocos.push(criarTags(livro.tags));
-    blocos.push(criarControlesEstado(livro));
+    if (window.Conta.podeEditar()) blocos.push(criarControlesEstado(livro));
+    else if (livro.avaliacao) blocos.push(criarEstrelas(livro.avaliacao));
     blocos.push(criarAcoesLivro(livro));
     blocos.push(criar("h3", "secao-titulo", "Livros relacionados"));
     blocos.push(criarRelacionados(livro.relacionados || []));
@@ -589,6 +599,20 @@
 
   function criarAcoesLivro(livro) {
     const area = criar("div");
+
+    if (!window.Conta.podeEditar()) {
+      area.appendChild(botao(
+        selecionados.has(livro.id) ? "Remover da exportação" : "Adicionar à exportação",
+        () => {
+          if (selecionados.has(livro.id)) selecionados.delete(livro.id);
+          else selecionados.set(livro.id, livro.titulo);
+          renderSelecao();
+          sincronizarCheckboxes();
+          renderDetalhe(livro);
+        }
+      ));
+      return area;
+    }
 
     const btnFavorito = criar("button", "com-flor");
     btnFavorito.type = "button";
@@ -662,17 +686,20 @@
   }
 
   async function atualizarEstado(id, campos) {
+    if (!window.Conta.podeEditar()) return;
     try {
       await enviarJson(`/api/itens/${id}/estado`, "PATCH", campos);
       await carregarFiltros();
       await recarregar();
       if (livroAberto && livroAberto.id === id) await abrirDetalhe(id);
     } catch (e) {
+      if (e.name === "AbortError") return;
       mostrarErroDetalhe(e.message);
     }
   }
 
   async function excluirLivro(livro) {
+    if (!window.Conta.podeEditar()) return;
     const confirmado = window.confirm(
       `Excluir "${livro.titulo}" do acervo? Esta ação não pode ser desfeita.`
     );
@@ -687,6 +714,7 @@
       await carregarFiltros();
       await recarregar();
     } catch (e) {
+      if (e.name === "AbortError") return;
       mostrarErroDetalhe(e.message);
     }
   }
@@ -705,6 +733,7 @@
   }
 
   function abrirNovo() {
+    if (!window.Conta.podeEditar()) return;
     editandoId = null;
     formLivro.reset();
     $("livro-titulo").textContent = "Novo livro";
@@ -713,6 +742,7 @@
   }
 
   function abrirEdicao(livro) {
+    if (!window.Conta.podeEditar()) return;
     editandoId = livro.id;
     preencherFormulario(livro);
     $("livro-titulo").textContent = "Editar livro";
@@ -764,6 +794,7 @@
       formLivro.elements.isbn.value = dados.isbn;
       status.textContent = "Dados preenchidos. Campos já digitados foram mantidos. Revise o gênero, que vem em inglês em alguns casos.";
     } catch (e) {
+      if (e.name === "AbortError") return;
       status.textContent = e.message;
     } finally {
       botaoIsbn.disabled = false;
@@ -772,6 +803,7 @@
 
   formLivro.addEventListener("submit", async (ev) => {
     ev.preventDefault();
+    if (!window.Conta.podeEditar()) return;
     const idEditado = editandoId;
     $("erro-form").hidden = true;
     salvarBtn.disabled = true;
@@ -787,6 +819,7 @@
       await recarregar();
       if (idEditado) await abrirDetalhe(idEditado);
     } catch (e) {
+      if (e.name === "AbortError") return;
       mostrarErroForm(e.message);
     } finally {
       salvarBtn.disabled = false;
@@ -946,12 +979,48 @@
   montarFiltroFlores();
   sincronizarControles();
 
-  (async () => {
+  let bibliotecaCarregada = null;
+
+  async function sincronizarBiblioteca() {
+    const biblioteca = window.Conta.biblioteca();
+    if (biblioteca?.id === bibliotecaCarregada) return;
+    bibliotecaCarregada = biblioteca?.id || null;
+    ++ultimaRequisicao;
+    clearTimeout(timerBusca);
+    selecionados.clear();
+    resumoFiltros = null;
+    livroAberto = null;
+    editandoId = null;
+    lista.replaceChildren();
+    $("metricas").replaceChildren();
+    $("pills-generos").replaceChildren();
+    $("contagem").textContent = "";
+    $("vazio").hidden = true;
+    $("carregar-mais").hidden = true;
+    formLivro.reset();
+    $("detalhe-corpo").replaceChildren();
+    $("lista-exportar").replaceChildren();
+    renderSelecao();
+    ocultarErro();
+    Object.assign(estado, {
+      q: "", status: "", genero: "", favorito: false, emprestado: false,
+      avaliacao: "", faixa: "", cadastro: "", ordenar: "titulo", pagina: 1,
+    });
+    $("busca").value = "";
+    $("filtro-genero").replaceChildren(criarOpcao("", "Todos"));
+    $("lista-generos").replaceChildren();
+    sincronizarControles();
+    renderGatilhoFlores();
+    if (!biblioteca) return;
     try {
       await carregarFiltros();
       await carregar();
     } catch (e) {
+      if (e.name === "AbortError") return;
       mostrarErro(e.message);
     }
-  })();
+  }
+
+  window.addEventListener("conta:alterada", sincronizarBiblioteca);
+  window.Conta.pronta.then(sincronizarBiblioteca);
 })();

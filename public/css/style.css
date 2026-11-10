@@ -108,7 +108,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primario); }
   justify-content: center;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 6.5rem;
+  gap: clamp(0.8rem, 5vw, 6.5rem);
   padding: 1rem 2rem;
   background: var(--superficie);
   border-bottom: 1px solid var(--borda-leve);
@@ -128,7 +128,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primario); }
 }
 .titulo-marca h1 {
   font-size: 1.3rem;
-  white-space: nowrap;
+  white-space: normal;
   letter-spacing: 0.02em;
   font-weight: bold;
 }
@@ -138,7 +138,7 @@ input[type="checkbox"] { width: auto; accent-color: var(--primario); }
   line-height: 1.2;
   color: var(--primario);
   margin: 0;
-  white-space: nowrap;
+  white-space: normal;
 }
 .topo .busca-principal {
   flex: 0 1 530px;
@@ -727,19 +727,121 @@ button.com-flor { display: inline-flex; align-items: center; gap: 0.4rem; }
   .topo {
     flex-wrap: wrap;
     text-align: center;
+    gap: 0.8rem;
   }
-  .marca { justify-content: center; }
+  .marca { justify-content: center; flex: 1 1 260px; min-width: 0; }
   .topo .busca-principal { flex: 1 1 100%; width: auto; max-width: 530px; order: 3; }
 }
 
 @media (max-width: 640px) {
   main { padding: 1rem; }
-  .topo { padding: 1rem; }
-  .metricas,
+  .topo { padding: 1rem; position: static; gap: 0.8rem; }
   .barra-filtros,
   .formulario .linha,
   .estado-livro,
   .detalhe-topo { grid-template-columns: 1fr; }
   .detalhe-topo .capa { width: 100%; max-width: 180px; }
   .cabecalho-pagina h2 { font-size: 1.6rem; }
+}
+
+/* Conta e bibliotecas compartilhadas */
+body[data-tema="verde"] {
+  --fundo: #f3f6ef; --superficie: #fcfdf9; --texto: #405342;
+  --texto-suave: #6c796c; --borda: #c5d1bf; --borda-leve: #e0e8da;
+  --destaque: #eaf1e5; --logo: #e2ecd9;
+}
+body[data-tema="azul"] {
+  --fundo: #f0f5f8; --superficie: #fbfdff; --texto: #405268;
+  --texto-suave: #6b7e91; --borda: #c7d3de; --borda-leve: #e0e7ef;
+  --destaque: #e8f0f8; --logo: #dfebf6;
+}
+.acesso {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 6rem);
+  width: min(1080px, 100%);
+  padding: 3rem 2rem;
+  margin: auto;
+}
+.acesso-apresentacao h1 { font-size: clamp(2.5rem, 4.5vw, 4rem); }
+.acesso-apresentacao > p { max-width: 440px; }
+.selo-floral { font-size: 4rem; line-height: 1; color: var(--primario); }
+.sobretitulo { font-size: .72rem; letter-spacing: .18em; margin: 1.4rem 0; }
+.acesso-nota { font-size: .85rem; color: var(--texto-suave); margin-top: 2rem; }
+.acesso-cartao {
+  background: var(--superficie);
+  padding: clamp(1.4rem, 3vw, 2.3rem);
+  border: 1px solid var(--borda-leve);
+  border-radius: 18px;
+  box-shadow: 0 12px 50px rgba(74, 59, 56, .07);
+}
+.acesso-cartao h2 { font-size: 1.9rem; }
+.acesso-cartao > p { font-size: .88rem; color: var(--texto-suave); }
+.acesso-cartao form { margin-top: 1.5rem; }
+.acesso-cartao form button { width: 100%; margin-top: .5rem; }
+.acesso-opcoes { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin-top: 1rem; }
+.acesso-opcoes button { font-size: .8rem; padding: .25rem 0; }
+.aviso-conta {
+  padding: .7rem 1rem;
+  background: var(--destaque);
+  border: 1px solid var(--borda-leve);
+  border-radius: 8px;
+  font-size: .85rem;
+  overflow-wrap: anywhere;
+}
+.aviso-conta[data-erro="true"] { color: var(--erro); border-color: #dcbbbb; }
+.barra-conta {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: .6rem; padding: .65rem 2rem;
+  border-bottom: 1px solid var(--borda-leve);
+  background: var(--superficie); font-size: .76rem;
+}
+.barra-conta label { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.barra-conta select { max-width: 240px; font-size: .8rem; padding: .3rem .5rem; }
+.barra-conta button { padding: .3rem .65rem; font-size: .75rem; }
+#conta-email { margin-right: auto; overflow-wrap: anywhere; }
+.titulo-marca { min-width: 0; }
+.marca { flex: 0 1 auto; min-width: 0; max-width: min(440px, 100%); }
+.marca > svg { flex-shrink: 0; }
+#nome-biblioteca, .marca .assinatura { overflow-wrap: anywhere; white-space: normal; }
+.abas-conta { display: flex; gap: .4rem; margin: 0 0 1.5rem; border-bottom: 1px solid var(--borda-leve); padding-bottom: .75rem; }
+.abas-conta button { border-radius: 8px; padding: .45rem .7rem; font-size: .85rem; }
+.abas-conta button[aria-selected="true"] { background: var(--primario); color: var(--contraste-primario, #fff); border-color: transparent; }
+.formulario input[type="color"] { min-width: 70px; min-height: 44px; padding: .2rem; }
+.membro-conta { display: flex; align-items: center; gap: .7rem; border-top: 1px solid var(--borda-leve); padding: .8rem 0; font-size: .85rem; }
+.membro-conta .membro-email { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.membro-conta button { padding: .3rem .6rem; font-size: .75rem; }
+.separador-conta { border: 0; border-top: 1px solid var(--borda-leve); margin: 1.8rem 0; }
+.resumo-backup { background: var(--destaque); padding: .8rem; border-radius: 8px; margin: .8rem 0; font-size: .85rem; white-space: pre-line; overflow-wrap: anywhere; }
+button.primario { color: var(--contraste-primario, #fff); }
+@media (max-width: 760px) {
+  .acesso { grid-template-columns: 1fr; max-width: 520px; padding: 1.7rem 1rem; gap: 1.3rem; }
+  .acesso-apresentacao h1 { font-size: 2.5rem; }
+  .acesso-apresentacao h1 br { display: none; }
+  .acesso-apresentacao .selo-floral { font-size: 2.5rem; }
+  .acesso-nota { display: none; }
+  .sobretitulo { margin: .6rem 0; }
+  .barra-conta { padding: .65rem 1rem; }
+  .barra-conta label { width: 100%; }
+  .barra-conta select { flex: 1; max-width: none; min-width: 0; }
+  #conta-email { flex-basis: calc(100% - 140px); }
+}
+@media (max-width: 900px) {
+  .marca { flex: 1 1 260px; }
+}
+@media (max-width: 640px) {
+  .marca { flex: 1 1 100%; }
+  .titulo-marca { flex: 1 1 auto; }
+  .metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+  #metricas .metrica { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: .2rem .5rem; padding: .7rem .8rem; min-height: 86px; }
+  #metricas .metrica .arte { width: 26px; height: 26px; background-size: 25px 25px; margin: 0; }
+  #metricas .metrica strong { font-size: 1.75rem; }
+  #metricas .metrica > span:last-child { grid-column: 1 / -1; font-size: .78rem; overflow-wrap: anywhere; }
+}
+@media (max-width: 420px) {
+  .abas-conta { gap: .2rem; }
+  .abas-conta button { font-size: .78rem; padding: .4rem .6rem; }
+  .barra-selecao { max-width: calc(100vw - 1rem); flex-wrap: wrap; justify-content: center; border-radius: 14px; font-size: .8rem; }
 }

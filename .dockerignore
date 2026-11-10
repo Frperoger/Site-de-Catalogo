@@ -5,3 +5,8 @@ data
 *.db-shm
 .git
 npm-debug.log
+.env
+.env.*
+!.env.example
+backup*.json
+backups

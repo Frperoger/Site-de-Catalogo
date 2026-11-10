@@ -1,3 +1,10 @@
 ﻿node_modules/
 
 data/
+.env
+.env.*
+!.env.example
+backup-local.json
+backup-*.json
+backups/
+npm-debug.log*
