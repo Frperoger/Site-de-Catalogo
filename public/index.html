@@ -7,7 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Lora:wght@400;500;600&family=Parisienne&display=swap">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/personalizacao.css">
+  <link rel="stylesheet" href="/css/aparencia.css">
 </head>
 <body>
   <section id="acesso" class="acesso" aria-labelledby="acesso-titulo">
@@ -39,13 +41,17 @@
     </div>
   </section>
 
+  <div id="visita-encerrada" class="empty-visit" hidden><h1>Este convite terminou</h1><p id="visita-mensagem"></p><p>Peça um novo link à pessoa que compartilhou a biblioteca.</p></div>
   <div id="area-biblioteca" hidden>
+  <div id="cenario-biblioteca" aria-hidden="true"></div>
+  <div id="faixa-visitante" class="aviso-conta" hidden>Biblioteca compartilhada · somente consulta · nenhuma conta é necessária</div>
   <div class="barra-conta">
-    <label for="biblioteca-seletor">Biblioteca <select id="biblioteca-seletor" aria-label="Biblioteca em uso"></select></label>
+    <button id="minha-biblioteca" type="button">Minha biblioteca</button>
+    <label id="acessos-recebidos" for="biblioteca-seletor" hidden>Compartilhadas comigo <select id="biblioteca-seletor" aria-label="Bibliotecas compartilhadas comigo"></select></label>
     <span id="conta-papel" class="badge"></span>
     <span id="conta-email"></span>
     <button id="conta-atualizar" type="button" title="Atualizar bibliotecas compartilhadas">Atualizar</button>
-    <button id="abrir-configuracao" type="button" hidden>Minha biblioteca</button>
+    <button id="abrir-configuracao" type="button" hidden>Configurações</button>
     <button id="conta-senha" type="button">Alterar senha</button>
     <button id="conta-sair" type="button">Sair</button>
   </div>
@@ -182,9 +188,7 @@
     <section id="lista" class="grade"></section>
     <p id="vazio" class="vazio" hidden>Nenhum livro encontrado com os filtros atuais.</p>
 
-    <div class="mais">
-      <button id="carregar-mais" type="button" hidden>Carregar mais</button>
-    </div>
+    <nav id="paginacao" aria-label="Páginas do catálogo"></nav>
   </main>
 
   <!-- Barra de seleção para exportação -->
@@ -329,23 +333,13 @@
 
   <dialog id="configuracao" class="modal" aria-labelledby="configuracao-titulo">
     <div class="modal-conteudo">
-      <header class="modal-cab"><h2 id="configuracao-titulo">Minha biblioteca</h2><button type="button" class="fechar" data-fechar="configuracao" aria-label="Fechar">×</button></header>
+      <header class="modal-cab"><h2 id="configuracao-titulo">Acessos e backup</h2><button type="button" class="fechar" data-fechar="configuracao" aria-label="Fechar">×</button></header>
       <div class="abas-conta" role="tablist" aria-label="Configurações da biblioteca">
-        <button id="aba-personalizar" role="tab" aria-controls="painel-personalizar" aria-selected="true" type="button">Personalizar</button>
         <button id="aba-acessos" role="tab" aria-controls="painel-acessos" aria-selected="false" type="button">Acessos</button>
         <button id="aba-backup" role="tab" aria-controls="painel-backup" aria-selected="false" type="button">Backup</button>
       </div>
-      <section id="painel-personalizar" role="tabpanel" aria-labelledby="aba-personalizar">
-        <p class="ajuda">Deixe esta biblioteca com a sua cara. As mudanças aparecem em todos os seus dispositivos.</p>
-        <form id="form-personalizar" class="formulario">
-          <label>Nome da biblioteca<input name="nome" required maxlength="100"></label>
-          <label>Assinatura ou subtítulo<input name="subtitulo" maxlength="160"></label>
-          <div class="linha"><label>Tema<select name="tema"><option value="floral">Jardim floral</option><option value="verde">Folhas de sálvia</option><option value="azul">Céu de leitura</option></select></label><label>Cor de destaque<input name="cor_primaria" type="color" value="#b58e8d"></label></div>
-          <div class="acoes-modal"><button type="submit" class="primario">Salvar personalização</button></div>
-        </form>
-      </section>
       <section id="painel-acessos" role="tabpanel" aria-labelledby="aba-acessos" hidden>
-        <p class="ajuda">Convide alguém para consultar seu catálogo. A pessoa precisa criar uma conta neste site primeiro. O acesso permite visualizar e exportar livros, sem alterar o acervo.</p>
+        <p class="ajuda">Convide alguém para consultar seu catálogo. Para um acesso vinculado ao e-mail, a pessoa precisa ter uma conta. Para visitantes sem conta, use a opção Link de visitante nas configurações. O acesso permite visualizar e exportar livros, sem alterar o acervo.</p>
         <form id="form-compartilhar" class="formulario"><label>E-mail da pessoa<input name="email" type="email" required maxlength="254" autocomplete="email"></label><button type="submit" class="primario">Liberar visualização</button></form>
         <h3 class="secao-titulo">Pessoas com acesso</h3>
         <div id="lista-membros" aria-live="polite"></div>
@@ -376,7 +370,34 @@
   </dialog>
 
   <script src="/vendor/supabase.js"></script>
-  <script src="js/conta.js"></script>
-  <script src="js/app.js"></script>
+  <dialog id="configuracoes" class="settings-dialog" aria-labelledby="settings-title">
+    <div class="settings-shell">
+      <header class="settings-header">
+        <div><p class="eyebrow">SEU ACERVO, DO SEU JEITO</p><h1 id="settings-title">Configurações da biblioteca</h1><p>Experimente na prévia antes de salvar.</p></div>
+        <button class="icon-button" id="fechar-config" aria-label="Fechar configurações">×</button>
+      </header>
+      <div class="settings-body">
+        <nav class="settings-nav" aria-label="Categorias de configuração" id="categorias"></nav>
+        <section class="settings-content" id="conteudo-config" aria-label="Opções de personalização"></section>
+        <section class="preview-area" aria-labelledby="preview-title">
+          <header class="preview-toolbar"><div><span class="live-dot" aria-hidden="true"></span><strong id="preview-title">Prévia ao vivo</strong></div><div class="segments" aria-label="Tamanho da prévia"><button type="button" id="preview-desktop" aria-pressed="true">Computador</button><button type="button" id="preview-mobile" aria-pressed="false">Celular</button></div></header>
+          <div class="preview-scroll"><div class="preview-frame" id="preview-frame"><div id="preview-biblioteca"></div></div></div>
+          <p class="preview-caption"><span id="contexto-previa">Artes contínuas do topo ao fim.</span> <button type="button" class="text-button" id="ampliar-previa">Ampliar prévia ↗</button></p>
+        </section>
+      </div>
+      <footer class="settings-footer"><div><span id="estado-rascunho" role="status">Nenhuma alteração pendente</span><button class="text-button" id="desfazer" disabled>Desfazer</button></div><div class="footer-actions"><button class="button" id="descartar">Descartar mudanças</button><button class="button primary" id="aplicar">Salvar personalização</button></div></footer>
+    </div>
+  </dialog>
+  <dialog id="preview-ampliada" class="wide-preview" aria-label="Prévia ampliada da biblioteca"><header><strong>Prévia ampliada · suas mudanças ainda são um rascunho</strong><button class="button" id="fechar-previa">Voltar às configurações</button></header><div id="biblioteca-ampliada"></div></dialog>
+  <dialog id="livro-dialog" class="book-dialog" aria-labelledby="livro-title"><button class="icon-button dialog-close" id="fechar-livro" aria-label="Fechar detalhes">×</button><div id="livro-corpo"></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <input id="importar-arquivo" type="file" accept="application/json,.json" hidden>
+
+  <script src="/js/aparencia-modelo.js"></script>
+  <script src="/js/artes.js"></script>
+  <script src="/js/tema.js"></script>
+  <script src="/js/conta.js"></script>
+  <script src="/js/personalizacao.js"></script>
+  <script src="/js/app.js"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ services:
     name: biblioteca-particular
     runtime: node
     plan: free
-    buildCommand: npm ci --omit=dev --omit=optional
+    buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

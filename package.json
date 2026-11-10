@@ -1,6 +1,6 @@
 {
   "name": "biblioteca-particular",
-  "version": "0.3.0",
+  "version": "3.0.0",
   "private": true,
   "main": "server.js",
   "scripts": {
@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.0",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16"

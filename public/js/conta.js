@@ -4,6 +4,9 @@
   let cliente = null;
   let sessao = null;
   let bibliotecaAtual = null;
+  let bibliotecas = [];
+  const visita = /^\/visita\/([^/]+)\/?$/.exec(location.pathname);
+  let dadosVisita = null;
   let usuarioAtual = null;
   let modo = "entrar";
   let geracao = 0;
@@ -59,6 +62,7 @@
   }
 
   function restaurarTema() {
+    window.TemaBiblioteca.limpar();
     document.body.dataset.tema = "floral";
     ["--primario", "--primario-hover", "--contraste-primario"].forEach(p => document.documentElement.style.removeProperty(p));
     $("nome-biblioteca").textContent = "Biblioteca Particular";
@@ -82,10 +86,15 @@
     document.documentElement.style.setProperty("--primario-hover", `#${rgb.map(n => Math.round(n * .84).toString(16).padStart(2, "0")).join("")}`);
     document.documentElement.style.setProperty("--contraste-primario", brilho > 155 ? "#302d2a" : "#ffffff");
     $("conta-email").textContent = usuarioAtual?.email || sessao?.user?.email || "";
-    $("conta-papel").textContent = b.papel === "admin" ? "Administrador" : "Visualização";
+    $("conta-papel").textContent = visita ? "Visitante" : b.papel === "admin" ? "Administrador" : "Visualização";
+    $("faixa-visitante").hidden = !visita;
+    document.querySelector('.barra-conta').hidden = Boolean(visita);
+    for (const id of ["conta-email","conta-atualizar","conta-senha","conta-sair","minha-biblioteca"]) $(id).hidden = Boolean(visita);
+    if (visita) { $("acessos-recebidos").hidden = true; $("busca").placeholder = 'Buscar por título, autor, editora ou gênero…'; }
+    $("minha-biblioteca").setAttribute("aria-current", b.proprietario_id === usuarioAtual?.id ? "page" : "false");
     $("abrir-novo").hidden = b.papel !== "admin";
     $("abrir-configuracao").hidden = b.papel !== "admin";
-    $("aviso-visualizador").hidden = b.papel === "admin";
+    $("aviso-visualizador").hidden = Boolean(visita) || b.papel === "admin";
   }
 
   function definirModo(novoModo) {
@@ -111,6 +120,7 @@
     geracao++;
     bibliotecaAtual = null;
     usuarioAtual = null;
+    bibliotecas = [];
     backupSelecionado = null;
     bibliotecaDoBackup = null;
     carregandoConta = false;
@@ -130,6 +140,11 @@
   async function requisicao(url, opcoes = {}) {
     const minhaGeracao = geracao;
     const bibliotecaId = bibliotecaAtual?.id;
+    if (visita) {
+      const alvo = /^\/api\/(filtros|itens(?:\/\d+)?)(\?.*)?$/.exec(url);
+      if (!alvo || (opcoes.method && opcoes.method !== 'GET')) throw new Error('O visitante tem acesso somente para consulta.');
+      return fetch('/api/visita/' + encodeURIComponent(visita[1]) + '/' + alvo[1] + (alvo[2] || ''), { cache:'no-store', credentials:'omit' });
+    }
     if (!cliente || !sessao) throw new Error("Entre na sua conta para continuar.");
     const { data, error } = await cliente.auth.getSession();
     if (error) throw error;
@@ -191,13 +206,12 @@
       bibliotecaAtual = dados.biblioteca;
       usuarioAtual = dados.usuario;
       if (!bibliotecaAtual?.id) throw new Error("Sua conta ainda não tem uma biblioteca disponível. Atualize a página ou contate o responsável pelo site.");
-      $("biblioteca-seletor").replaceChildren(...(dados.bibliotecas || []).map(b => {
-        const o = document.createElement("option");
-        o.value = b.id;
-        o.textContent = `${b.nome}${b.papel === "admin" ? " · minha biblioteca" : " · compartilhada"}`;
-        return o;
-      }));
-      $("biblioteca-seletor").value = bibliotecaAtual.id;
+      bibliotecas = dados.bibliotecas || [];
+      const recebidas = bibliotecas.filter(b => b.proprietario_id !== usuarioAtual.id);
+      const vazio = document.createElement('option'); vazio.value=''; vazio.textContent='Escolha uma biblioteca compartilhada'; vazio.disabled=true;
+      $("biblioteca-seletor").replaceChildren(vazio,...recebidas.map(b=>{const o=document.createElement('option');o.value=b.id;o.textContent=b.nome;return o;}));
+      $("acessos-recebidos").hidden = !recebidas.length;
+      $("biblioteca-seletor").value = recebidas.some(b=>b.id===bibliotecaAtual.id)?bibliotecaAtual.id:'';
       guardarBiblioteca(bibliotecaAtual.id);
       aplicarBiblioteca();
       $("acesso").hidden = true;
@@ -254,7 +268,7 @@
   }
 
   function mudarAba(aba) {
-    ["personalizar", "acessos", "backup"].forEach(nome => {
+    ["acessos", "backup"].forEach(nome => {
       $("aba-" + nome).setAttribute("aria-selected", String(nome === aba));
       $("aba-" + nome).tabIndex = nome === aba ? 0 : -1;
       $("painel-" + nome).hidden = nome !== aba;
@@ -335,6 +349,7 @@
   });
 
   $("biblioteca-seletor").addEventListener("change", ev => carregarConta(ev.target.value));
+  $("minha-biblioteca").addEventListener("click",()=>{const propria=bibliotecas.find(b=>b.proprietario_id===usuarioAtual?.id);if(propria&&propria.id!==bibliotecaAtual?.id)carregarConta(propria.id);});
   $("conta-atualizar").addEventListener("click", () => carregarConta());
   $("conta-sair").addEventListener("click", async ev => {
     ev.currentTarget.disabled = true;
@@ -348,15 +363,7 @@
     finally { $("conta-sair").disabled = false; }
   });
   $("conta-senha").addEventListener("click", abrirNovaSenha);
-  $("abrir-configuracao").addEventListener("click", () => {
-    if (bibliotecaAtual?.papel !== "admin") return;
-    const form = $("form-personalizar");
-    ["nome", "subtitulo", "cor_primaria", "tema"].forEach(c => { form.elements[c].value = bibliotecaAtual[c] || ""; });
-    limparRestauracao();
-    mudarAba("personalizar");
-    $("configuracao").showModal();
-  });
-  ["personalizar", "acessos", "backup"].forEach((aba, indice, abas) => {
+  ["acessos", "backup"].forEach((aba, indice, abas) => {
     const el = $("aba-" + aba);
     el.addEventListener("click", () => mudarAba(aba));
     el.addEventListener("keydown", ev => {
@@ -370,24 +377,6 @@
       mudarAba(abas[destino]);
       $("aba-" + abas[destino]).focus();
     });
-  });
-
-  $("form-personalizar").addEventListener("submit", async ev => {
-    ev.preventDefault();
-    const form = ev.currentTarget;
-    const dados = Object.fromEntries(new FormData(form));
-    try {
-      await ocupado(form, async () => {
-        const resposta = await enviar("/api/biblioteca", "PATCH", dados);
-        const atualizada = resposta.biblioteca || resposta;
-        bibliotecaAtual = { ...bibliotecaAtual, ...dados, ...atualizada };
-        aplicarBiblioteca();
-        const o = [...$("biblioteca-seletor").options].find(o => o.value === bibliotecaAtual.id);
-        if (o) o.textContent = `${bibliotecaAtual.nome} · minha biblioteca`;
-        limparRestauracao();
-        mensagem("configuracao-mensagem", "Personalização salva. Ela estará aqui também no seu próximo acesso.");
-      });
-    } catch (erro) { mensagem("configuracao-mensagem", erroLegivel(erro), true); }
   });
 
   $("form-compartilhar").addEventListener("submit", async ev => {
@@ -542,12 +531,28 @@
     }
   }
 
+  async function iniciarVisita() {
+    $("acesso").hidden=true;
+    try {
+      const resposta=await fetch('/api/visita/'+encodeURIComponent(visita[1]),{cache:'no-store',credentials:'omit'});
+      const dados=await resposta.json();if(!resposta.ok)throw new Error(dados.erro||'Não foi possível abrir o convite.');
+      dadosVisita=dados;bibliotecaAtual=dados.biblioteca;usuarioAtual=null;
+      aplicarBiblioteca();$("area-biblioteca").hidden=false;notificar();
+    } catch(e) { $("visita-encerrada").hidden=false;$("visita-mensagem").textContent=erroLegivel(e); }
+  }
   window.Conta = {
     fetch: requisicao,
-    podeEditar: () => bibliotecaAtual?.papel === "admin",
+    json,
+    podeEditar: () => !visita && bibliotecaAtual?.papel === 'admin',
+    visitante: () => Boolean(visita),
+    dadosVisita: () => dadosVisita,
+    bibliotecas: () => bibliotecas,
+    usuario: () => usuarioAtual,
     biblioteca: () => bibliotecaAtual,
     geracao: () => geracao,
+    atualizarBiblioteca: dados => {if(bibliotecaAtual&&dados?.id===bibliotecaAtual.id){bibliotecaAtual={...bibliotecaAtual,...dados};bibliotecas=bibliotecas.map(b=>b.id===dados.id?bibliotecaAtual:b);aplicarBiblioteca();}},
+    abrirGestao: aba => {if(bibliotecaAtual?.papel!=='admin'||visita)return;limparRestauracao();mudarAba(aba||'acessos');$("configuracao").showModal();},
     pronta: null
   };
-  window.Conta.pronta = iniciar();
+  window.Conta.pronta = visita ? iniciarVisita() : iniciar();
 })();

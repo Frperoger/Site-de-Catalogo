@@ -29,6 +29,9 @@ function criarAutenticacao(opcoes = {}) {
   const criarCliente = opcoes.createSupabaseClient || createClient;
   return {
     config,
+    publico: () => criarCliente(config.supabaseUrl, config.supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    }),
     autenticar: async (req, res, next) => {
       try {
         if (!config.configurado) return res.status(503).json({ erro: "Configure o projeto Supabase para começar a usar sua biblioteca." });

@@ -1,0 +1,21 @@
+"use strict";
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+test("a aplicação integra o editor com recursos absolutos, sem IDs duplicados ou servidor de protótipo", () => {
+  const html = fs.readFileSync("public/index.html", "utf8");
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ["configuracoes", "preview-ampliada", "preview-biblioteca", "cenario-biblioteca", "visita-encerrada", "paginacao"]) assert.ok(ids.includes(id), id);
+  for (const m of html.matchAll(/(?:src|href)="(\/(?:js|css)\/[^"?#]+)"/g)) assert.ok(fs.existsSync(path.join("public", m[1])), m[1]);
+  for (const m of html.matchAll(/<script src="(\/js\/[^"?#]+)"/g)) new vm.Script(fs.readFileSync(path.join("public", m[1]), "utf8"), { filename: m[1] });
+  assert.ok(html.indexOf('/js/tema.js') < html.indexOf('/js/conta.js'));
+  assert.ok(html.indexOf('/js/conta.js') < html.indexOf('/js/personalizacao.js'));
+  assert.equal(html.includes("prototype-key"), false);
+  assert.equal(html.includes("Aplicar no protótipo"), false);
+  const atualizacao = fs.readFileSync("supabase/migrations/003_personalizacao_visitas.sql", "utf8");
+  const corpo = atualizacao.slice(atualizacao.indexOf("create table if not exists public.personalizacoes_biblioteca")).replace(/commit;\s*$/, "").trim();
+  assert.ok(fs.readFileSync("supabase/schema.sql", "utf8").includes(corpo), "O schema completo deve incluir a mesma atualização da v3.");
+});

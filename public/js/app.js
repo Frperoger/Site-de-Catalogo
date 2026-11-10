@@ -42,6 +42,7 @@
   const salvarBtn = $("salvar-livro");
 
   let resumoFiltros = null;
+  let livrosVisiveis = [],totalVisivel=0;
   let ultimaRequisicao = 0;
   let timerBusca = null;
   let livroAberto = null;
@@ -137,20 +138,10 @@
   // ---------- Componentes visuais ----------
 
   function criarCapa(livro) {
-    const capa = criar("div", "capa");
-    if (livro.capa_url) {
-      const img = document.createElement("img");
-      img.src = livro.capa_url;
-      img.alt = `Capa de ${livro.titulo}`;
-      img.loading = "lazy";
-      img.addEventListener("error", () => capa.replaceChildren(criar("span", "", "✿")));
-      capa.appendChild(img);
-    } else {
-      capa.appendChild(criar("span", "", "✿"));
-    }
-    return capa;
+    const capa=criar('div','capa'),img=window.TemaBiblioteca.capa(livro);img.loading='lazy';
+    img.addEventListener('error',()=>{capa.replaceChildren(window.TemaBiblioteca.capa({...livro,capa_url:''}));},{once:true});
+    capa.append(img);return capa;
   }
-
   function criarBadges(livro) {
     const area = criar("div", "badges");
     area.appendChild(criar("span", `badge ${livro.status}`, STATUS_ROTULO[livro.status]));
@@ -171,9 +162,9 @@
 
   function criarEstrelas(nota) {
     const area = criar("span", "flores-card");
-    area.setAttribute("aria-label", `${nota} de 5 flores`);
+    area.setAttribute("aria-label", `${nota} de 5`);
     for (let i = 1; i <= 5; i++) {
-      area.appendChild(criarFlor(i <= nota, 16));
+      area.appendChild(criarFlor(i <= nota, 20));
     }
     return area;
   }
@@ -222,7 +213,7 @@
 
       const ilustracao = arte === "arte-flor"
         ? criarFlor(true, 34)
-        : criar("span", `arte ${arte}`);
+        : window.TemaBiblioteca.pictograma(arte);
       if (arte === "arte-flor") ilustracao.classList.add("arte", "arte-flor-svg");
 
       b.append(ilustracao, criar("strong", "", n), criar("span", "", rotulo));
@@ -332,12 +323,12 @@
 
     card.append(
       criarCapa(livro),
-      marca,
       criar("h3", "", livro.titulo),
       criar("p", "autor", livro.autor || "Autor não informado"),
-      criar("p", "local", livro.localizacao || "Localização não informada"),
       criarBadges(livro)
     );
+    if(!window.Conta.visitante())card.append(marca);
+    if(!window.Conta.visitante()||window.Conta.dadosVisita()?.opcoes.localizacao)card.append(criar('p','local',livro.localizacao||'Localização não informada'));
     if (livro.avaliacao) card.appendChild(criarEstrelas(livro.avaliacao));
 
     card.addEventListener("click", () => abrirDetalhe(livro.id));
@@ -350,7 +341,7 @@
     return card;
   }
 
-  async function carregar({ acumular = false } = {}) {
+  async function carregar() {
     if (!window.Conta.biblioteca()) return;
     const id = ++ultimaRequisicao;
     ocultarErro();
@@ -372,20 +363,23 @@
       const dados = await api(`/api/itens?${params}`);
       if (id !== ultimaRequisicao) return;
 
-      const cards = dados.itens.map(criarCard);
-      if (acumular) lista.append(...cards);
-      else lista.replaceChildren(...cards);
-
-      const exibidos = lista.children.length;
-      $("contagem").textContent = dados.total
-        ? `Exibindo ${exibidos} de ${dados.total} livro(s)`
-        : "";
-      $("vazio").hidden = dados.total > 0;
-      $("carregar-mais").hidden = exibidos >= dados.total;
+      livrosVisiveis=dados.itens;totalVisivel=dados.total;lista.replaceChildren(...livrosVisiveis.map(criarCard));
+      const inicio=dados.total?(estado.pagina-1)*LIMITE+1:0,fim=Math.min(estado.pagina*LIMITE,dados.total);
+      $("contagem").textContent=dados.total?'Exibindo '+inicio+' a '+fim+' de '+dados.total+' livro(s)':'';
+      $("vazio").hidden=dados.total>0;renderPaginacao();
     } catch (e) {
       if (e.name === "AbortError") return;
       mostrarErro(e.message);
     }
+  }
+
+  function renderPaginacao(){
+    const nav=$('paginacao'),total=Math.ceil(totalVisivel/LIMITE);nav.replaceChildren();if(!total)return;
+    const ir=n=>{estado.pagina=n;carregar();lista.scrollIntoView({behavior:'smooth',block:'start'});};
+    const anterior=botao('←',()=>ir(estado.pagina-1));anterior.disabled=estado.pagina<=1;anterior.setAttribute('aria-label','Página anterior');nav.append(anterior);
+    const paginas=[...new Set([1,total,estado.pagina-2,estado.pagina-1,estado.pagina,estado.pagina+1,estado.pagina+2])].filter(n=>n>=1&&n<=total).sort((a,b)=>a-b);let ultima=0;
+    for(const n of paginas){if(ultima&&n>ultima+1)nav.append(criar('span','','…'));const b=botao(window.TemaBiblioteca.estado().paginacao==='editorial'?'Cap. '+n:String(n),()=>ir(n));b.setAttribute('aria-label','Página '+n);if(n===estado.pagina)b.setAttribute('aria-current','page');nav.append(b);ultima=n;}
+    const proxima=botao('→',()=>ir(estado.pagina+1));proxima.disabled=estado.pagina>=total;proxima.setAttribute('aria-label','Próxima página');nav.append(proxima);
   }
 
   function recarregar() {
@@ -466,37 +460,7 @@
 
    // ---------- Detalhes ----------
 
-  const NS_SVG = "http://www.w3.org/2000/svg";
-
-  // Flor de cinco pétalas, no mesmo estilo do logo. "vazia" mostra só o contorno.
-  function criarFlor(preenchida = true, tamanho = 18) {
-    const svg = document.createElementNS(NS_SVG, "svg");
-    svg.setAttribute("viewBox", "0 0 40 40");
-    svg.setAttribute("width", String(tamanho));
-    svg.setAttribute("height", String(tamanho));
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("class", preenchida ? "flor" : "flor vazia");
-
-    for (let i = 0; i < 5; i++) {
-      const petala = document.createElementNS(NS_SVG, "ellipse");
-      petala.setAttribute("class", "petala");
-      petala.setAttribute("cx", "20");
-      petala.setAttribute("cy", "11");
-      petala.setAttribute("rx", "6");
-      petala.setAttribute("ry", "9");
-      petala.setAttribute("transform", `rotate(${i * 72} 20 20)`);
-      svg.appendChild(petala);
-    }
-
-    const miolo = document.createElementNS(NS_SVG, "circle");
-    miolo.setAttribute("class", "miolo");
-    miolo.setAttribute("cx", "20");
-    miolo.setAttribute("cy", "20");
-    miolo.setAttribute("r", "4.5");
-    svg.appendChild(miolo);
-
-    return svg;
-  }
+  function criarFlor(preenchida=true,tamanho=20){return window.TemaBiblioteca.simbolo(preenchida,tamanho);}
 
   // Cinco flores clicáveis. Clicar na nota atual zera a avaliação.
   function criarAvaliacaoFlores(livro) {
@@ -512,8 +476,8 @@
       b.type = "button";
       b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(n === livro.avaliacao));
-      b.setAttribute("aria-label", `${n} ${n === 1 ? "flor" : "flores"}`);
-      b.title = `${n} ${n === 1 ? "flor" : "flores"}`;
+      b.setAttribute("aria-label", `${n} de 5`);
+      b.title = `${n} de 5`;
       b.appendChild(criarFlor(n <= livro.avaliacao, 26));
       b.addEventListener("click", () => {
         const nova = n === livro.avaliacao ? 0 : n;
@@ -556,7 +520,7 @@
 
     const dl = criar("dl", "detalhe-lista");
     campos.forEach(([rotulo, valor]) => dl.append(criar("dt", "", rotulo), criar("dd", "", String(valor))));
-    if (livro.emprestado) {
+    if (livro.emprestado && !window.Conta.visitante()) {
       dl.append(
         criar("dt", "", "Emprestado para"),
         criar("dd", "", livro.emprestado_para || "Não informado")
@@ -599,6 +563,7 @@
 
   function criarAcoesLivro(livro) {
     const area = criar("div");
+    if(window.Conta.visitante()){area.append(criar('p','ajuda','Biblioteca compartilhada: acesso somente para consulta.'));return area;}
 
     if (!window.Conta.podeEditar()) {
       area.appendChild(botao(
@@ -858,10 +823,6 @@
 
   $("limpar").addEventListener("click", limparFiltros);
   $("abrir-novo").addEventListener("click", abrirNovo);
-  $("carregar-mais").addEventListener("click", () => {
-    estado.pagina += 1;
-    carregar({ acumular: true });
-  });
 
   $("exportar-abrir").addEventListener("click", abrirExportacao);
   $("exportar-gerar").addEventListener("click", gerarExportacao);
@@ -996,7 +957,8 @@
     $("pills-generos").replaceChildren();
     $("contagem").textContent = "";
     $("vazio").hidden = true;
-    $("carregar-mais").hidden = true;
+    $("paginacao").replaceChildren();
+    livrosVisiveis=[];totalVisivel=0;
     formLivro.reset();
     $("detalhe-corpo").replaceChildren();
     $("lista-exportar").replaceChildren();
@@ -1011,6 +973,10 @@
     $("lista-generos").replaceChildren();
     sincronizarControles();
     renderGatilhoFlores();
+    const notasPermitidas=!window.Conta.visitante()||window.Conta.dadosVisita()?.opcoes.avaliacoes;
+    $("filtro-avaliacao").closest('.campo').hidden=!notasPermitidas;
+    for(const o of $("filtro-ordenar").options)if(o.value==='avaliacao')o.hidden=!notasPermitidas;
+    if(!notasPermitidas)$("filtro-ordenar").querySelector('option[value="avaliacao"]')?.remove();
     if (!biblioteca) return;
     try {
       await carregarFiltros();
@@ -1021,6 +987,11 @@
     }
   }
 
+  window.addEventListener('personalizacao:alterada',()=>{
+    lista.replaceChildren(...livrosVisiveis.map(criarCard));if(resumoFiltros)renderMetricas();renderPaginacao();
+    document.querySelectorAll('#area-biblioteca .simbolo-avaliacao').forEach(img=>{img.replaceWith(window.TemaBiblioteca.simbolo(!img.classList.contains('apagado'),Number(img.dataset.baseSize)||20));});
+    if(livroAberto)renderDetalhe(livroAberto);
+  });
   window.addEventListener("conta:alterada", sincronizarBiblioteca);
   window.Conta.pronta.then(sincronizarBiblioteca);
 })();

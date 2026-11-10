@@ -3,13 +3,15 @@ const path = require("path");
 const fs = require("fs");
 const { STATUS } = require("./db");
 const { criarAutenticacao, apenasAdmin, UUID } = require("./auth");
+const { prepararImagem, prepararPacote, validarPacote, obterAparencia } = require("./lib/aparencia");
+const { registrarVisitas, registrarConvites } = require("./lib/visitas");
 
 const envPath = path.join(__dirname, ".env");
 if (fs.existsSync(envPath)) process.loadEnvFile(envPath);
 
 function criarApp(opcoes = {}) {
 const app = express();
-const { config, autenticar } = criarAutenticacao(opcoes);
+const { config, autenticar, publico } = criarAutenticacao(opcoes);
 const rota = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
 app.disable("x-powered-by");
@@ -17,6 +19,7 @@ app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("X-Frame-Options", "DENY");
+  if (_req.path.startsWith("/api/")) res.setHeader("Cache-Control", "no-store");
   next();
 });
 app.get("/api/health", (_req, res) => res.json({ ok: true, configurado: config.configurado }));
@@ -25,6 +28,7 @@ app.get("/api/config", (_req, res) => {
   res.json(config);
 });
 app.get("/vendor/supabase.js", (_req, res) => res.sendFile(path.join(__dirname, "node_modules", "@supabase", "supabase-js", "dist", "umd", "supabase.js")));
+registrarVisitas(app, { config, publico, rota });
 app.use(express.static(path.join(__dirname, "public"), { index: "index.html" }));
 app.use("/api", (_req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
@@ -34,16 +38,33 @@ app.post("/api/restaurar", apenasAdmin, express.json({ limit: "25mb" }), rota(as
   if (req.body?.confirmacao !== req.biblioteca.nome) return res.status(400).json({ erro: "Confirme o nome da biblioteca antes de substituir o acervo." });
   const { dados, erro } = validarBackup(req.body?.backup);
   if (erro) return res.status(400).json({ erro });
+  if (dados.personalizacao.aparencia) dados.personalizacao.aparencia = await prepararPacote(dados.personalizacao.aparencia);
   await req.db.restaurar(dados.livros, dados.personalizacao);
   res.json({ ok: true, total: dados.livros.length });
 }));
+app.post("/api/imagens/:slot", apenasAdmin, express.raw({ type: "application/octet-stream", limit: "25mb" }), rota(async (req, res) => {
+  let nome = "Minha imagem";
+  try { nome = decodeURIComponent(req.get("X-Nome-Imagem") || nome); } catch { /* O nome é apenas uma legenda. */ }
+  res.json(await prepararImagem(req.body, req.params.slot, nome));
+}));
+app.put("/api/aparencia", apenasAdmin, express.json({ limit: "16mb" }), rota(async (req, res) => {
+  const anterior = await obterAparencia(req.supabase, req.biblioteca);
+  const pacote = await prepararPacote(req.body, anterior.arquivos);
+  const { error } = await req.supabase.rpc("salvar_aparencia", { biblioteca_destino: req.biblioteca.id, dados: pacote });
+  if (error) throw error;
+  const s = pacote.estado;
+  res.json({ ...pacote, biblioteca: { ...req.biblioteca, nome: s.nome, subtitulo: s.subtitulo, cor_primaria: s.cor, tema: s.modelo === "noturna" ? "azul" : s.modelo === "classica" ? "verde" : "floral" } });
+}));
 app.use(express.json({ limit: "200kb" }));
+app.get("/api/aparencia", rota(async (req, res) => res.json(await obterAparencia(req.supabase, req.biblioteca))));
+registrarConvites(app, { apenasAdmin, rota, UUID });
 
 app.get("/api/conta", (req, res) => res.json({ usuario: { id: req.usuario.id, email: req.usuario.email }, bibliotecas: req.bibliotecas, biblioteca: req.biblioteca }));
 app.patch("/api/biblioteca", apenasAdmin, rota(async (req, res) => {
   const { dados, erro } = validarPersonalizacao(req.body);
   if (erro) return res.status(400).json({ erro });
-  const resultado = await req.supabase.from("bibliotecas").update(dados).eq("id", req.biblioteca.id).select().single();
+  const { aparencia: _aparencia, ...campos } = dados;
+  const resultado = await req.supabase.from("bibliotecas").update(campos).eq("id", req.biblioteca.id).select().single();
   if (resultado.error) throw resultado.error;
   res.json({ ...resultado.data, papel: req.biblioteca.papel });
 }));
@@ -69,7 +90,8 @@ app.get("/api/backup", apenasAdmin, rota(async (req, res) => {
   const livros = await req.db.backup();
   if (livros.length > 10000) return res.status(413).json({ erro: "Este acervo excede o limite de 10.000 livros do backup pelo site." });
   const { nome, subtitulo, cor_primaria, tema } = req.biblioteca;
-  const backup = { formato: "biblioteca-particular", versao: 1, exportado_em: new Date().toISOString(), personalizacao: { nome, subtitulo, cor_primaria, tema }, livros };
+  const aparencia = await obterAparencia(req.supabase, req.biblioteca);
+  const backup = { formato: "biblioteca-particular", versao: 1, exportado_em: new Date().toISOString(), personalizacao: { nome, subtitulo, cor_primaria, tema, aparencia }, livros };
   const conteudo = JSON.stringify(backup);
   if (Buffer.byteLength(conteudo, "utf8") > 24 * 1024 * 1024) return res.status(413).json({ erro: "O backup excede 24 MB. Exporte este acervo pelo painel do Supabase." });
   res.attachment(`biblioteca-backup-${new Date().toISOString().slice(0, 10)}.json`);
@@ -140,6 +162,10 @@ function validarPersonalizacao(body) {
   if (!dados.nome) return { erro: "Informe o nome da biblioteca." };
   if (!/^#[0-9a-f]{6}$/i.test(dados.cor_primaria)) return { erro: "Escolha uma cor válida." };
   if (!["floral", "verde", "azul"].includes(dados.tema)) return { erro: "Escolha um tema válido." };
+  if (body.aparencia !== undefined) {
+    try { validarPacote(body.aparencia); dados.aparencia = body.aparencia; }
+    catch (e) { return { erro: e.message }; }
+  }
   return { dados };
 }
 
@@ -433,6 +459,7 @@ app.use((err, _req, res, _next) => {
   if (["P0001", "22023"].includes(err.code)) return res.status(400).json({ erro: err.message || "Não foi possível concluir esta operação." });
   if (["23502", "23503", "23514", "22P02", "22007", "22008"].includes(err.code)) return res.status(400).json({ erro: "Dados inválidos. Revise os campos e tente novamente." });
   if (err.code === "23505") return res.status(409).json({ erro: "Este registro já existe." });
+  if (["PGRST202", "42P01", "42883"].includes(err.code)) return res.status(503).json({ erro: "A atualização v3 do banco ainda não foi instalada. Siga o guia ATUALIZAR-V3 para concluir a configuração." });
   // Não registrar tokens, cabeçalhos ou conteúdo privado do acervo.
   console.error("Falha na biblioteca:", err.code || err.name || "erro desconhecido");
   res.status(500).json({ erro: "Erro interno do servidor." });

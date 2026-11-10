@@ -3,6 +3,9 @@ const assert = require("node:assert/strict");
 const { createClient } = require("@supabase/supabase-js");
 const { criarApp } = require("../server");
 const { configuracao } = require("../auth");
+const crypto = require("node:crypto");
+const sharp = require("sharp");
+const { Modelo } = require("../lib/aparencia");
 
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
@@ -14,6 +17,8 @@ let falhar = false;
 let restaurado;
 let base;
 let servidor;
+const aparencias = new Map();
+const convites = new Map();
 
 async function supabaseSimulado(input, init = {}) {
   const url = new URL(typeof input === "string" ? input : input.url || String(input));
@@ -28,6 +33,23 @@ async function supabaseSimulado(input, init = {}) {
     return json(token === "viewer" ? [{ papel: "visualizador", biblioteca: biblioteca(B) }] : [{ papel: "admin", biblioteca: biblioteca(A) }, { papel: "visualizador", biblioteca: biblioteca(B) }]);
   }
   if (falhar) return json({ message: "Detalhe interno sensível", code: "XX000" }, 500);
+  if (url.pathname.endsWith("/rpc/obter_aparencia")) return json(aparencias.get(JSON.parse(init.body).biblioteca_destino) || null);
+  if (url.pathname.endsWith("/rpc/salvar_aparencia")) {
+    const p = JSON.parse(init.body); aparencias.set(p.biblioteca_destino, p.dados); return json({ ok: true });
+  }
+  if (url.pathname.endsWith("/rpc/criar_convite")) {
+    const p = JSON.parse(init.body), c = { ...p, id: crypto.randomUUID(), expira: new Date(Date.now() + p.dias * 86400000).toISOString() };
+    convites.set(p.resumo_chave, c); return json({ id: c.id, expira: c.expira });
+  }
+  if (url.pathname.endsWith("/rpc/listar_convites")) return json([]);
+  if (url.pathname.endsWith("/rpc/revogar_convite")) {
+    const p = JSON.parse(init.body); for (const [k, c] of convites) if (c.id === p.convite_id && c.biblioteca_destino === p.biblioteca_destino) convites.delete(k);
+    return json({ ok: true });
+  }
+  if (url.pathname.endsWith("/rpc/consultar_visita")) {
+    const p = JSON.parse(init.body), c = convites.get(crypto.createHash("sha256").update(p.chave).digest("hex"));
+    return c ? json({ biblioteca: { id: c.biblioteca_destino, nome: "Acervo A", papel: "visitante" } }) : json({ code: "P0002", message: "Convite encerrado." }, 400);
+  }
   if (url.pathname.endsWith("/rpc/restaurar_biblioteca")) {
     restaurado = JSON.parse(init.body);
     return json({ ok: true });
@@ -161,4 +183,36 @@ test("falhas assíncronas retornam JSON sem detalhes internos", async () => {
     assert.equal(resposta.status, 500);
     assert.equal((await resposta.json()).erro, "Erro interno do servidor.");
   } finally { falhar = false; }
+});
+
+
+test('v3 prepara imagens sem exigir dimensões ou transparência e mantém a autorização',async()=>{
+  const imagem=await sharp({create:{width:15,height:87,channels:3,background:'#4f7356'}}).png().toBuffer();
+  const preparar=token=>fetch(base+'/api/imagens/nota',{method:'POST',headers:{'Content-Type':'application/octet-stream',...(token?{Authorization:'Bearer '+token}:{})},body:imagem});
+  assert.equal((await preparar(null)).status,401);assert.equal((await preparar('viewer')).status,403);
+  const r=await preparar('admin');assert.equal(r.status,200);const a=await r.json();assert.equal(a.width,15);assert.equal(a.height,87);assert.match(a.url,/^data:image\/webp;base64,/);
+});
+test('v3 salva e exporta a composição e imagens somente na biblioteca autenticada',async()=>{
+  const png=await sharp({create:{width:40,height:11,channels:3,background:'#467653'}}).png().toBuffer();
+  const estado={...Modelo.modelo('jardim'),nota:'custom',uploads:{nota:'imagem-v3'}};
+  const corpo={estado,arquivos:[{id:'imagem-v3',url:'data:image/png;base64,'+png.toString('base64'),nome:'nota.png'}],biblioteca_id:FORA};
+  assert.equal((await requisicao('/api/aparencia',{method:'PUT',token:'viewer',body:corpo})).status,403);
+  const r=await requisicao('/api/aparencia',{method:'PUT',body:corpo});assert.equal(r.status,200);const salvo=await r.json();
+  assert.equal(salvo.biblioteca.id,A);assert.match(salvo.arquivos[0].url,/^data:image\/webp;base64,/);
+  assert.equal(chamadas.at(-1).body.biblioteca_destino,A);
+  const backup=await (await requisicao('/api/backup')).json();assert.equal(backup.personalizacao.aparencia.estado.nota,'custom');assert.equal(backup.personalizacao.aparencia.arquivos.length,1);
+  const novamente=await (await requisicao('/api/aparencia',{method:'PUT',body:salvo})).json();assert.equal(novamente.arquivos[0].url,salvo.arquivos[0].url);
+});
+test('v3 abre convite sem sessão, não transmite JWT ao Supabase e bloqueia escritas',async()=>{
+  assert.equal((await requisicao('/api/convites',{method:'POST',token:'viewer',body:{dias:7}})).status,403);
+  const criado=await requisicao('/api/convites',{method:'POST',body:{dias:7,biblioteca_id:FORA,localizacao:false}});assert.equal(criado.status,201);const c=await criado.json();
+  assert.match(c.caminho,/^\/visita\/[A-Za-z0-9_-]{43}$/);
+  assert.equal(chamadas.at(-1).body.biblioteca_destino,A);
+  const chave=c.caminho.split('/').pop();assert.equal(chamadas.at(-1).body.resumo_chave,crypto.createHash('sha256').update(chave).digest('hex'));
+  const leitura=await requisicao('/api/visita/'+chave,{token:null,bibliotecaId:FORA});assert.equal(leitura.status,200);assert.equal((await leitura.json()).biblioteca.id,A);
+  assert.notEqual(chamadas.at(-1).token,'admin');assert.notEqual(chamadas.at(-1).token,'viewer');
+  assert.equal((await requisicao('/api/visita/'+chave+'/itens',{method:'POST',token:'admin',body:{titulo:'Invadido'}})).status,405);
+  assert.equal((await requisicao('/api/aparencia',{token:null})).status,401);
+  assert.equal((await requisicao('/api/convites/'+c.id,{method:'DELETE'})).status,200);
+  assert.equal((await requisicao('/api/visita/'+chave,{token:null})).status,410);
 });

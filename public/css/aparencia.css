@@ -1,0 +1,61 @@
+/* A composição salva vale para o acervo, mantendo o editor neutro. */
+body[data-personalizacao]::before,body[data-personalizacao]::after{display:none}
+#area-biblioteca{position:relative;isolation:isolate;min-height:100dvh}
+#cenario-biblioteca{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.cenario-fundo{position:absolute;inset:0}.cenario-fundo img{width:100%;height:100%;object-fit:cover}
+.cenario-fundo.repetir{background-repeat:repeat;background-size:550px auto}
+.cenario-lateral{position:absolute;top:0;bottom:0;width:var(--largura-lateral,150px);background-repeat:repeat-y;background-size:100% auto;background-position:center top}
+.cenario-lateral.esquerda{left:0}.cenario-lateral.direita{right:0}.cenario-lateral.estreita{width:calc(var(--largura-lateral,150px)*.65)}
+body[data-personalizacao] .topo,body[data-personalizacao] .barra-conta{background:color-mix(in srgb,var(--superficie) 82%,transparent)}
+body[data-personalizacao] .topo{position:relative;gap:24px;padding:28px max(24px,6vw);flex-wrap:wrap}
+.logo-personalizado{width:var(--tamanho-logo);height:var(--tamanho-logo);object-fit:contain;flex-shrink:0}
+body[data-personalizacao] .marca .assinatura{font-family:var(--fonte-texto);font-size:14px}
+body[data-personalizacao] .titulo-marca h1{font-size:clamp(24px,3vw,36px);font-weight:400;letter-spacing:-.5px}
+body[data-cabecalho=central] .topo{flex-direction:column;gap:18px}
+body[data-cabecalho=central] .marca{flex-direction:column;text-align:center}
+body[data-cabecalho=central] .topo .busca-principal{flex:auto;width:min(600px,100%)}
+body[data-cabecalho=editorial] .topo{border-bottom:3px double var(--borda)}
+body[data-cabecalho=editorial] .titulo-marca h1{font-variant:small-caps}
+.separador-personalizado{display:block;width:min(380px,75vw);height:48px;object-fit:contain;margin:0 auto}
+body[data-personalizacao] .divisor-floral{display:block;margin:20px auto;max-width:100%}
+body[data-personalizacao] .card{border-radius:var(--raio);background:var(--superficie);padding:16px}
+body[data-personalizacao] .grade{gap:var(--espaco-acervo)}
+body[data-personalizacao] .card .capa{height:auto;aspect-ratio:2/3;border-radius:var(--raio)}
+body[data-personalizacao] .card h3{font-weight:400}
+body[data-personalizacao] .cabecalho-pagina{text-align:center}
+body[data-personalizacao] .cabecalho-pagina h2{font-size:clamp(26px,3vw,36px);font-weight:400;line-height:1.25}
+body[data-personalizacao] .cabecalho-pagina p{font-size:14px}
+body[data-personalizacao] .metrica{background:var(--superficie);color:var(--texto);border-color:var(--borda-leve)}
+body[data-personalizacao] #metricas .metrica:nth-child(n){background:var(--superficie);color:var(--texto);box-shadow:none}
+body[data-personalizacao] #metricas .metrica:nth-child(n) span{color:var(--texto-suave)}
+body[data-personalizacao] #metricas .metrica:nth-child(n) strong{color:var(--primario);font-weight:400}
+body[data-personalizacao] #metricas .metrica[aria-pressed=true]{background:var(--destaque);border-color:var(--primario)}
+body[data-personalizacao] .topo .busca-principal::placeholder{color:var(--texto-suave);opacity:.8;font-weight:400}
+body[data-personalizacao] .campo label{color:var(--texto-suave)}
+body[data-personalizacao] .card .capa img{width:100%;height:100%;object-fit:cover}
+body[data-personalizacao] .badge{background:var(--destaque);color:var(--texto);border-color:var(--borda-leve)}
+body[data-personalizacao] button.primario{color:var(--contraste-primario)}
+body[data-cartao=editorial] #lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cartao=editorial] #lista .card{display:grid;grid-template-columns:90px minmax(0,1fr);gap:7px 18px;align-content:start}
+body[data-cartao=editorial] #lista .card .capa{grid-column:1;grid-row:1/7;width:90px}
+body[data-cartao=editorial] #lista .card>:not(.capa):not(.selecionar){grid-column:2}
+body[data-cartao=compacto] #lista{display:grid;grid-template-columns:1fr}
+body[data-cartao=compacto] #lista .card{display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:5px 18px}
+body[data-cartao=compacto] #lista .card .capa{grid-column:1;grid-row:1/6;width:58px}
+body[data-cartao=compacto] #lista .card h3,body[data-cartao=compacto] #lista .card .autor,body[data-cartao=compacto] #lista .card .local{grid-column:2}
+body[data-cartao=compacto] #lista .card .badges,body[data-cartao=compacto] #lista .card .flores-card{grid-column:3}
+body[data-espaco=compacto] #lista{gap:12px}body[data-espaco=amplo] #lista{gap:32px}
+.simbolo-avaliacao{object-fit:contain;display:inline-block;vertical-align:middle;flex-shrink:0}
+.simbolo-avaliacao.apagado{opacity:.22;filter:grayscale(1)}
+#paginacao{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:30px 0}
+#paginacao button{min-width:38px;min-height:38px;border-radius:var(--raio)}
+#paginacao button[aria-current=page]{background:var(--primario);color:var(--contraste-primario)}
+body[data-paginacao=editorial] #paginacao button{border-radius:0;border-width:0 0 1px;background:transparent}
+body[data-paginacao=editorial] #paginacao button[aria-current=page]{background:var(--primario)}
+body[data-paginacao=marcadores] #paginacao button{border-radius:2px 2px 9px 9px;min-height:44px;clip-path:polygon(0 0,100% 0,100% 100%,50% 83%,0 100%);padding-bottom:14px}
+#faixa-visitante{margin:0;text-align:center;padding:10px 20px;background:var(--destaque);color:var(--texto);font-size:12px}
+.barra-conta #minha-biblioteca[aria-current=page]{background:var(--primario);color:var(--contraste-primario)}
+@media(max-width:760px){.cenario-lateral{width:min(55px,12vw)}body[data-cartao=editorial] #lista{grid-template-columns:1fr}body[data-cartao=compacto] #lista .card{grid-template-columns:46px minmax(0,1fr)}body[data-cartao=compacto] #lista .card .capa{width:46px}body[data-cartao=compacto] #lista .card .badges,body[data-cartao=compacto] #lista .card .flores-card{grid-column:2}body[data-personalizacao] .topo{padding:24px 20px;gap:16px}body[data-personalizacao] .topo .busca-principal{flex:auto;width:100%}.barra-conta{position:relative!important}}
+@media(max-width:470px){.cenario-lateral{display:none}body[data-personalizacao] #lista{gap:12px}body[data-personalizacao] #lista .card{padding:11px}body[data-personalizacao] .marca{flex-direction:column;text-align:center}}
+
+#paginacao button:disabled{cursor:default;opacity:.35}
