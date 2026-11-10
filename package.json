@@ -1,16 +1,21 @@
 {
-  "name": "Biblioteca",
-  "version": "0.2.0",
+  "name": "biblioteca-particular",
+  "version": "0.3.0",
   "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "exportar:sqlite": "node scripts/exportar-sqlite.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13.0 <25"
   },
   "dependencies": {
-    "better-sqlite3": "^11.0.0",
+    "@supabase/supabase-js": "^2.100.0",
     "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
   }
 }

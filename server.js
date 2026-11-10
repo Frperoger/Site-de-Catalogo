@@ -1,13 +1,80 @@
 const express = require("express");
 const path = require("path");
-const db = require("./db");
+const fs = require("fs");
+const { STATUS } = require("./db");
+const { criarAutenticacao, apenasAdmin, UUID } = require("./auth");
 
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) process.loadEnvFile(envPath);
+
+function criarApp(opcoes = {}) {
 const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "0.0.0.0";
+const { config, autenticar } = criarAutenticacao(opcoes);
+const rota = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+});
+app.get("/api/health", (_req, res) => res.json({ ok: true, configurado: config.configurado }));
+app.get("/api/config", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(config);
+});
+app.get("/vendor/supabase.js", (_req, res) => res.sendFile(path.join(__dirname, "node_modules", "@supabase", "supabase-js", "dist", "umd", "supabase.js")));
+app.use(express.static(path.join(__dirname, "public"), { index: "index.html" }));
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+}, autenticar);
+app.post("/api/restaurar", apenasAdmin, express.json({ limit: "25mb" }), rota(async (req, res) => {
+  if (req.body?.confirmacao !== req.biblioteca.nome) return res.status(400).json({ erro: "Confirme o nome da biblioteca antes de substituir o acervo." });
+  const { dados, erro } = validarBackup(req.body?.backup);
+  if (erro) return res.status(400).json({ erro });
+  await req.db.restaurar(dados.livros, dados.personalizacao);
+  res.json({ ok: true, total: dados.livros.length });
+}));
 app.use(express.json({ limit: "200kb" }));
-app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/api/conta", (req, res) => res.json({ usuario: { id: req.usuario.id, email: req.usuario.email }, bibliotecas: req.bibliotecas, biblioteca: req.biblioteca }));
+app.patch("/api/biblioteca", apenasAdmin, rota(async (req, res) => {
+  const { dados, erro } = validarPersonalizacao(req.body);
+  if (erro) return res.status(400).json({ erro });
+  const resultado = await req.supabase.from("bibliotecas").update(dados).eq("id", req.biblioteca.id).select().single();
+  if (resultado.error) throw resultado.error;
+  res.json({ ...resultado.data, papel: req.biblioteca.papel });
+}));
+app.get("/api/membros", apenasAdmin, rota(async (req, res) => {
+  const { data, error } = await req.supabase.rpc("membros_da_biblioteca", { biblioteca_destino: req.biblioteca.id });
+  if (error) throw error;
+  res.json(data || []);
+}));
+app.post("/api/membros", apenasAdmin, rota(async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ erro: "Informe um e-mail válido." });
+  const { error } = await req.supabase.rpc("compartilhar_biblioteca", { biblioteca_destino: req.biblioteca.id, email_destino: email });
+  if (error) throw error;
+  res.status(201).json({ ok: true });
+}));
+app.delete("/api/membros/:userId", apenasAdmin, rota(async (req, res) => {
+  if (!UUID.test(req.params.userId)) return res.status(400).json({ erro: "Usuário inválido." });
+  const { error } = await req.supabase.rpc("revogar_acesso", { biblioteca_destino: req.biblioteca.id, usuario_destino: req.params.userId });
+  if (error) throw error;
+  res.json({ ok: true });
+}));
+app.get("/api/backup", apenasAdmin, rota(async (req, res) => {
+  const livros = await req.db.backup();
+  if (livros.length > 10000) return res.status(413).json({ erro: "Este acervo excede o limite de 10.000 livros do backup pelo site." });
+  const { nome, subtitulo, cor_primaria, tema } = req.biblioteca;
+  const backup = { formato: "biblioteca-particular", versao: 1, exportado_em: new Date().toISOString(), personalizacao: { nome, subtitulo, cor_primaria, tema }, livros };
+  const conteudo = JSON.stringify(backup);
+  if (Buffer.byteLength(conteudo, "utf8") > 24 * 1024 * 1024) return res.status(413).json({ erro: "O backup excede 24 MB. Exporte este acervo pelo painel do Supabase." });
+  res.attachment(`biblioteca-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  res.type("application/json").send(conteudo);
+}));
 
 // ---------- Validação ----------
 
@@ -27,6 +94,7 @@ function booleano(valor) {
 }
 
 function validarLivro(body = {}) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { erro: "Dados do livro inválidos." };
   const dados = {
     titulo: texto(body, "titulo"),
     autor: texto(body, "autor"),
@@ -63,7 +131,43 @@ function validarLivro(body = {}) {
 
 function obterLivro(req) {
   const id = Number(req.params.id);
-  return Number.isInteger(id) ? db.buscarPorId(id) : null;
+  return Number.isSafeInteger(id) && id > 0 ? req.db.buscarPorId(id) : null;
+}
+
+function validarPersonalizacao(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { erro: "Personalização inválida." };
+  const dados = { nome: texto(body, "nome", 100), subtitulo: texto(body, "subtitulo", 160), cor_primaria: texto(body, "cor_primaria", 7), tema: texto(body, "tema", 20) };
+  if (!dados.nome) return { erro: "Informe o nome da biblioteca." };
+  if (!/^#[0-9a-f]{6}$/i.test(dados.cor_primaria)) return { erro: "Escolha uma cor válida." };
+  if (!["floral", "verde", "azul"].includes(dados.tema)) return { erro: "Escolha um tema válido." };
+  return { dados };
+}
+
+function validarBackup(backup) {
+  if (!backup || backup.formato !== "biblioteca-particular" || backup.versao !== 1 || !Array.isArray(backup.livros)) return { erro: "Arquivo de backup inválido ou de versão incompatível." };
+  if (backup.livros.length > 10000) return { erro: "O backup pode conter no máximo 10.000 livros." };
+  const personalizacao = validarPersonalizacao(backup.personalizacao);
+  if (personalizacao.erro) return personalizacao;
+  const livros = [];
+  for (const [indice, livro] of backup.livros.entries()) {
+    const resultado = validarLivro(livro);
+    if (resultado.erro) return { erro: `Livro ${indice + 1}: ${resultado.erro}` };
+    const estado = livro.status ?? "nao_lido";
+    const avaliacao = livro.avaliacao ?? 0;
+    if (!STATUS.includes(estado) || !Number.isInteger(avaliacao) || avaliacao < 0 || avaliacao > 5) return { erro: `Livro ${indice + 1}: status ou avaliação inválidos.` };
+    if ((livro.favorito !== undefined && typeof livro.favorito !== "boolean") || (livro.emprestado !== undefined && typeof livro.emprestado !== "boolean")) return { erro: `Livro ${indice + 1}: favorito ou empréstimo inválidos.` };
+    // IDs e propriedade do arquivo são ignorados. A restauração sempre pertence à biblioteca autenticada.
+    const datas = {};
+    for (const campo of ["criado_em", "atualizado_em"]) {
+      if (livro[campo] !== undefined) {
+        const data = new Date(livro[campo]);
+        if (!Number.isFinite(data.getTime())) return { erro: `Livro ${indice + 1}: data inválida.` };
+        datas[campo] = data.toISOString();
+      }
+    }
+    livros.push({ ...resultado.dados, status: estado, favorito: livro.favorito ?? false, avaliacao, ...datas });
+  }
+  return { dados: { livros, personalizacao: personalizacao.dados } };
 }
 
 // Faixas e janelas usadas pelos selects da barra de filtros
@@ -84,16 +188,16 @@ function filtroAvaliacao(valor) {
 
 // ---------- Filtros e listagem ----------
 
-app.get("/api/filtros", (_req, res) => {
-  res.json(db.filtros());
-});
+app.get("/api/filtros", rota(async (req, res) => {
+  res.json(await req.db.filtros());
+}));
 
-app.get("/api/itens", (req, res) => {
-  const limite = Math.min(Math.max(Number(req.query.limite) || 50, 1), 100);
-  const pagina = Math.max(Number(req.query.pagina) || 1, 1);
+app.get("/api/itens", rota(async (req, res) => {
+  const limite = Math.min(Math.max(Math.floor(Number(req.query.limite)) || 50, 1), 100);
+  const pagina = Math.min(Math.max(Math.floor(Number(req.query.pagina)) || 1, 1), 1000000);
   const cadastro = Number(req.query.cadastro);
 
-  const resultado = db.listar({
+  const resultado = await req.db.listar({
     q: String(req.query.q || ""),
     status: String(req.query.status || ""),
     genero: String(req.query.genero || ""),
@@ -108,38 +212,38 @@ app.get("/api/itens", (req, res) => {
   });
 
   res.json({ ...resultado, pagina, limite });
-});
+}));
 
-app.get("/api/itens/:id", (req, res) => {
-  const livro = obterLivro(req);
+app.get("/api/itens/:id", rota(async (req, res) => {
+  const livro = await obterLivro(req);
   if (!livro) return res.status(404).json({ erro: "Livro não encontrado." });
-  res.json({ ...livro, relacionados: db.relacionados(livro) });
-});
+  res.json({ ...livro, relacionados: await req.db.relacionados(livro) });
+}));
 
 // ---------- Cadastro e edição ----------
 
-app.post("/api/itens", (req, res) => {
+app.post("/api/itens", apenasAdmin, rota(async (req, res) => {
   const { dados, erro } = validarLivro(req.body);
   if (erro) return res.status(400).json({ erro });
-  res.status(201).json(db.inserir(dados));
-});
+  res.status(201).json(await req.db.inserir(dados));
+}));
 
-app.put("/api/itens/:id", (req, res) => {
-  if (!obterLivro(req)) return res.status(404).json({ erro: "Livro não encontrado." });
+app.put("/api/itens/:id", apenasAdmin, rota(async (req, res) => {
+  if (!await obterLivro(req)) return res.status(404).json({ erro: "Livro não encontrado." });
   const { dados, erro } = validarLivro(req.body);
   if (erro) return res.status(400).json({ erro });
-  res.json(db.atualizar(Number(req.params.id), dados));
-});
+  res.json(await req.db.atualizar(Number(req.params.id), dados));
+}));
 
 // Status, favorito, avaliação e empréstimo
-app.patch("/api/itens/:id/estado", (req, res) => {
-  if (!obterLivro(req)) return res.status(404).json({ erro: "Livro não encontrado." });
+app.patch("/api/itens/:id/estado", apenasAdmin, rota(async (req, res) => {
+  if (!await obterLivro(req)) return res.status(404).json({ erro: "Livro não encontrado." });
 
   const corpo = req.body ?? {};
   const campos = {};
 
   if (corpo.status !== undefined) {
-    if (!db.STATUS.includes(corpo.status)) return res.status(400).json({ erro: "Status inválido." });
+    if (!STATUS.includes(corpo.status)) return res.status(400).json({ erro: "Status inválido." });
     campos.status = corpo.status;
   }
   if (corpo.favorito !== undefined) {
@@ -165,15 +269,15 @@ app.patch("/api/itens/:id/estado", (req, res) => {
     campos.emprestado_para = String(corpo.emprestado_para).trim().slice(0, 100);
   }
 
-  res.json(db.atualizarEstado(Number(req.params.id), campos));
-});
+  res.json(await req.db.atualizarEstado(Number(req.params.id), campos));
+}));
 
 // Exclusão definitiva
-app.delete("/api/itens/:id", (req, res) => {
-  if (!obterLivro(req)) return res.status(404).json({ erro: "Livro não encontrado." });
-  db.excluir(Number(req.params.id));
+app.delete("/api/itens/:id", apenasAdmin, rota(async (req, res) => {
+  if (!await obterLivro(req)) return res.status(404).json({ erro: "Livro não encontrado." });
+  await req.db.excluir(Number(req.params.id));
   res.json({ ok: true });
-});
+}));
 
 // ---------- ISBN (Open Library) ----------
 
@@ -182,7 +286,7 @@ function anoDe(textoData) {
   return m ? Number(m[0]) : null;
 }
 
-app.get("/api/isbn/:isbn", async (req, res) => {
+app.get("/api/isbn/:isbn", apenasAdmin, async (req, res) => {
   const isbn = String(req.params.isbn).replace(/[^0-9Xx]/g, "").toUpperCase();
   if (![10, 13].includes(isbn.length)) {
     return res.status(400).json({ erro: "O ISBN deve ter 10 ou 13 dígitos." });
@@ -298,7 +402,7 @@ function documentoDoc(livros) {
 </html>`;
 }
 
-app.post("/api/exportar", (req, res) => {
+app.post("/api/exportar", rota(async (req, res) => {
   const ids = Array.isArray(req.body?.ids)
     ? req.body.ids.map(Number).filter(Number.isInteger).slice(0, 500)
     : [];
@@ -306,17 +410,18 @@ app.post("/api/exportar", (req, res) => {
     return res.status(400).json({ erro: "Selecione ao menos um livro para exportar." });
   }
 
-  const livros = db.buscarVarios(ids);
+  const livros = await req.db.buscarVarios(ids);
   if (!livros.length) return res.status(404).json({ erro: "Nenhum livro encontrado." });
 
   const nome = `acervo-${new Date().toISOString().slice(0, 10)}.doc`;
   res.setHeader("Content-Type", "application/msword; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="${nome}"`);
   res.send(documentoDoc(livros));
-});
+}));
 
 // ---------- Erros ----------
 
+app.use("/api", (_req, res) => res.status(404).json({ erro: "Recurso não encontrado." }));
 app.use((err, _req, res, _next) => {
   if (err.type === "entity.parse.failed") {
     return res.status(400).json({ erro: "Requisição com formato inválido." });
@@ -324,10 +429,21 @@ app.use((err, _req, res, _next) => {
   if (err.type === "entity.too.large") {
     return res.status(413).json({ erro: "Requisição muito grande." });
   }
-  console.error(err);
+  if (err.code === "42501") return res.status(403).json({ erro: "Você não tem permissão para esta operação." });
+  if (["P0001", "22023"].includes(err.code)) return res.status(400).json({ erro: err.message || "Não foi possível concluir esta operação." });
+  if (["23502", "23503", "23514", "22P02", "22007", "22008"].includes(err.code)) return res.status(400).json({ erro: "Dados inválidos. Revise os campos e tente novamente." });
+  if (err.code === "23505") return res.status(409).json({ erro: "Este registro já existe." });
+  // Não registrar tokens, cabeçalhos ou conteúdo privado do acervo.
+  console.error("Falha na biblioteca:", err.code || err.name || "erro desconhecido");
   res.status(500).json({ erro: "Erro interno do servidor." });
 });
+return app;
+}
 
-app.listen(PORT, HOST, () => {
-  console.log(`Biblioteca rodando em http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  const HOST = process.env.HOST || "0.0.0.0";
+  criarApp().listen(PORT, HOST, () => console.log(`Biblioteca rodando em http://localhost:${PORT}`));
+}
+
+module.exports = { criarApp };

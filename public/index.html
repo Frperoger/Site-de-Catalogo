@@ -10,13 +10,52 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <section id="acesso" class="acesso" aria-labelledby="acesso-titulo">
+    <div class="acesso-apresentacao">
+      <span class="selo-floral" aria-hidden="true">✿</span>
+      <p class="sobretitulo">BIBLIOTECA PARTICULAR</p>
+      <h1>Um lugar para<br>todas as suas histórias.</h1>
+      <p>Seu acervo organizado, em casa ou onde a leitura levar você.</p>
+      <p class="acesso-nota">Cada conta tem sua própria biblioteca. Compartilhe o acesso para outras pessoas consultarem seus livros.</p>
+    </div>
+    <div class="acesso-cartao">
+      <h2 id="acesso-titulo">Entre na sua biblioteca</h2>
+      <p id="acesso-descricao">Use sua conta para acessar o mesmo acervo no computador e no celular.</p>
+      <p id="acesso-carregando" role="status">Preparando sua biblioteca…</p>
+      <form id="form-acesso" class="formulario" hidden>
+        <label id="campo-nome-conta" hidden>Seu nome<input name="nome" maxlength="100" autocomplete="name"></label>
+        <label id="campo-email">E-mail<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+        <label id="campo-senha">Senha<input name="senha" type="password" minlength="8" maxlength="128" autocomplete="current-password" required></label>
+        <label id="campo-confirmar-senha" hidden>Confirme a senha<input name="confirmar_senha" type="password" minlength="8" maxlength="128" autocomplete="new-password"></label>
+        <button id="acesso-enviar" class="primario" type="submit">Entrar</button>
+      </form>
+      <p id="acesso-mensagem" class="aviso-conta" role="status" hidden></p>
+      <nav id="acesso-opcoes" class="acesso-opcoes" aria-label="Opções de acesso" hidden>
+        <button id="acesso-cadastro" type="button" class="link">Criar minha conta</button>
+        <button id="acesso-recuperar" type="button" class="link">Esqueci minha senha</button>
+        <button id="acesso-voltar" type="button" class="link" hidden>Voltar para entrar</button>
+      </nav>
+      <button id="acesso-tentar" type="button" hidden>Tentar novamente</button>
+    </div>
+  </section>
+
+  <div id="area-biblioteca" hidden>
+  <div class="barra-conta">
+    <label for="biblioteca-seletor">Biblioteca <select id="biblioteca-seletor" aria-label="Biblioteca em uso"></select></label>
+    <span id="conta-papel" class="badge"></span>
+    <span id="conta-email"></span>
+    <button id="conta-atualizar" type="button" title="Atualizar bibliotecas compartilhadas">Atualizar</button>
+    <button id="abrir-configuracao" type="button" hidden>Minha biblioteca</button>
+    <button id="conta-senha" type="button">Alterar senha</button>
+    <button id="conta-sair" type="button">Sair</button>
+  </div>
   <header class="topo">
     <div class="marca">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64" aria-label="Logo Biblioteca Particular Sistene Rosa">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64" aria-label="Logo da biblioteca">
         <!-- Fundo Circular -->
         <circle cx="50" cy="50" r="48" fill="#FFFFFF" stroke="#B99A5B" stroke-width="1" stroke-dasharray="230 70" stroke-dashoffset="-20" />
-        <text x="50" y="92" text-anchor="middle" font-family="&#39;Parisienne&#39;, cursive" font-size="15" fill="#B08A8A">
-            Sislene Rosa
+        <text id="assinatura-logo" x="50" y="92" text-anchor="middle" font-family="&#39;Parisienne&#39;, cursive" font-size="12" fill="#B08A8A">
+            Minha biblioteca
         </text>
         <defs>
             <!-- Trajeto curvo para o texto superior -->
@@ -56,14 +95,14 @@
         <!-- Assinatura Inferior -->
         </svg>
       <div class="titulo-marca">
-        <h1>Biblioteca Particular</h1>
-        <p id="subtitulo" class="assinatura">Sislene Rosa</p>
+        <h1 id="nome-biblioteca">Biblioteca Particular</h1>
+        <p id="subtitulo" class="assinatura"></p>
       </div>
     </div>
     <input type="search" id="busca" class="busca-principal"
            placeholder="Buscar por título, autor, editora, localização ou emprestado para..."
            aria-label="Buscar no acervo">
-    <button id="abrir-novo" type="button" class="primario">+ Novo livro</button>
+    <button id="abrir-novo" type="button" class="primario" hidden>+ Novo livro</button>
   </header>
 
   <main>
@@ -71,6 +110,7 @@
       <h2>Sua biblioteca, com cuidado de jardim</h2>
       <p>Um catálogo para organizar o que você lê, quer ler e já leu.</p>
     </section>
+    <p id="aviso-visualizador" class="aviso-conta" hidden>Você tem acesso para consulta. O administrador cuida dos cadastros e das alterações.</p>
 
 <div class="divisor-floral" aria-hidden="true">
   <span class="linha-divisor"></span>
@@ -153,6 +193,7 @@
     <button id="exportar-abrir" type="button">Exportar .doc</button>
     <button id="limpar-selecao" type="button">Limpar seleção</button>
   </div>
+  </div>
 
   <!-- Detalhes do livro -->
   <dialog id="detalhe" class="modal" aria-labelledby="detalhe-titulo">
@@ -163,7 +204,7 @@
       </header>
       <div id="detalhe-corpo"></div>
       <div class="rodape-detalhe">
-        <button type="button" class="primario" data-fechar="detalhe">Salvar</button>
+        <button type="button" class="primario" data-fechar="detalhe">Fechar</button>
       </div>
     </div>
   </dialog>
@@ -286,6 +327,56 @@
     </div>
   </dialog>
 
+  <dialog id="configuracao" class="modal" aria-labelledby="configuracao-titulo">
+    <div class="modal-conteudo">
+      <header class="modal-cab"><h2 id="configuracao-titulo">Minha biblioteca</h2><button type="button" class="fechar" data-fechar="configuracao" aria-label="Fechar">×</button></header>
+      <div class="abas-conta" role="tablist" aria-label="Configurações da biblioteca">
+        <button id="aba-personalizar" role="tab" aria-controls="painel-personalizar" aria-selected="true" type="button">Personalizar</button>
+        <button id="aba-acessos" role="tab" aria-controls="painel-acessos" aria-selected="false" type="button">Acessos</button>
+        <button id="aba-backup" role="tab" aria-controls="painel-backup" aria-selected="false" type="button">Backup</button>
+      </div>
+      <section id="painel-personalizar" role="tabpanel" aria-labelledby="aba-personalizar">
+        <p class="ajuda">Deixe esta biblioteca com a sua cara. As mudanças aparecem em todos os seus dispositivos.</p>
+        <form id="form-personalizar" class="formulario">
+          <label>Nome da biblioteca<input name="nome" required maxlength="100"></label>
+          <label>Assinatura ou subtítulo<input name="subtitulo" maxlength="160"></label>
+          <div class="linha"><label>Tema<select name="tema"><option value="floral">Jardim floral</option><option value="verde">Folhas de sálvia</option><option value="azul">Céu de leitura</option></select></label><label>Cor de destaque<input name="cor_primaria" type="color" value="#b58e8d"></label></div>
+          <div class="acoes-modal"><button type="submit" class="primario">Salvar personalização</button></div>
+        </form>
+      </section>
+      <section id="painel-acessos" role="tabpanel" aria-labelledby="aba-acessos" hidden>
+        <p class="ajuda">Convide alguém para consultar seu catálogo. A pessoa precisa criar uma conta neste site primeiro. O acesso permite visualizar e exportar livros, sem alterar o acervo.</p>
+        <form id="form-compartilhar" class="formulario"><label>E-mail da pessoa<input name="email" type="email" required maxlength="254" autocomplete="email"></label><button type="submit" class="primario">Liberar visualização</button></form>
+        <h3 class="secao-titulo">Pessoas com acesso</h3>
+        <div id="lista-membros" aria-live="polite"></div>
+      </section>
+      <section id="painel-backup" role="tabpanel" aria-labelledby="aba-backup" hidden>
+        <p>Guarde uma cópia dos livros e da personalização desta biblioteca.</p>
+        <button id="baixar-backup" type="button" class="primario">Baixar backup completo</button>
+        <hr class="separador-conta">
+        <h3>Restaurar uma cópia</h3>
+        <p class="ajuda">A restauração substitui todos os livros e a personalização da biblioteca atual. As contas e permissões de acesso são mantidas. Baixe um backup antes de continuar.</p>
+        <form id="form-restaurar" class="formulario">
+          <label>Arquivo de backup (.json)<input id="arquivo-backup" type="file" accept=".json,application/json" required></label>
+          <div id="resumo-backup" class="resumo-backup" hidden></div>
+          <label>Para confirmar, digite o nome da biblioteca atual<input name="confirmacao" required autocomplete="off"></label>
+          <p id="nome-confirmacao" class="ajuda"></p>
+          <button id="restaurar-enviar" type="submit" class="excluir" disabled>Substituir acervo e restaurar</button>
+        </form>
+      </section>
+      <p id="configuracao-mensagem" class="aviso-conta" role="status" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="senha-dialogo" class="modal" aria-labelledby="senha-titulo">
+    <div class="modal-conteudo"><header class="modal-cab"><h2 id="senha-titulo">Definir nova senha</h2><button type="button" class="fechar" data-fechar="senha-dialogo" aria-label="Fechar">×</button></header>
+      <form id="form-senha" class="formulario"><label>Nova senha<input name="senha" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><label>Confirme a nova senha<input name="confirmacao" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label><button type="submit" class="primario">Salvar nova senha</button></form>
+      <p id="senha-mensagem" class="aviso-conta" role="status" hidden></p>
+    </div>
+  </dialog>
+
+  <script src="/vendor/supabase.js"></script>
+  <script src="js/conta.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
