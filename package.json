@@ -9,14 +9,11 @@
     "exportar:sqlite": "node scripts/exportar-sqlite.js"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0 <25"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.0",
     "express": "^4.19.2"
-  },
-  "optionalDependencies": {
-    "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16"

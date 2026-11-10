@@ -25,7 +25,7 @@ A chave pública é entregue ao navegador para o login. A proteção dos dados d
 
 ## Executar no computador
 
-Instale Node.js 22 ou superior e execute na pasta do projeto:
+Instale Node.js 22.13 ou superior da linha 22, ou Node.js 24, e execute na pasta do projeto:
 
 ```powershell
 npm install
@@ -56,7 +56,7 @@ O arquivo `data/acervo.db` da versão anterior não é enviado ao Supabase autom
 npm run exportar:sqlite
 ```
 
-Isso cria `backup-local.json` e dispensa instalar um conversor adicional. Em um Node antigo sem SQLite nativo, o script tenta a dependência alternativa `better-sqlite3`; instale-a com `npm install --include=optional` somente se necessário. Para outros caminhos:
+Isso cria `backup-local.json` usando somente o SQLite incluído no próprio Node, sem dependência nativa adicional. Para outros caminhos:
 
 ```powershell
 node scripts/exportar-sqlite.js "C:\caminho\acervo.db" "C:\caminho\backup-migracao.json"
@@ -97,6 +97,8 @@ O repositório inclui [`render.yaml`](render.yaml), que declara um único servi�
 8. Abra a mesma URL no celular, faça login com sua conta e confira os dados. Baixe e restaure um backup em uma biblioteca de teste antes de depender dele.
 
 Se preferir criar o serviço manualmente, escolha **Web Service**, runtime **Node**, plano **Free**, os mesmos comandos e variáveis acima, e health check `/api/health`.
+
+O arquivo `.node-version` seleciona Node 22 para serviços criados manualmente. Se a Render já tiver a variável `NODE_VERSION`, ela tem prioridade: configure seu valor como `22`. Após atualizar esta versão, use **Manual Deploy > Clear build cache & deploy** se uma instalação antiga ainda tentar compilar `better-sqlite3`.
 
 O plano gratuito do Render suspende o servidor após 15 minutos sem tráfego e a primeira visita seguinte pode demorar para abrir. Há limites de horas, transferência e builds; o sistema de arquivos é temporário. Por isso os dados ficam no Supabase. Consulte os [limites atuais do Render Free](https://render.com/docs/free). O Supabase Free também pode pausar projetos com pouca atividade; veja [pausa de projetos](https://supabase.com/docs/guides/platform/free-project-pausing). A configuração é adequada para começar, sem promessa de disponibilidade contínua.
 

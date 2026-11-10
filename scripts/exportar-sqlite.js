@@ -15,16 +15,10 @@ function abrirSomenteLeitura(caminhoBanco) {
   let DatabaseSync;
   try {
     ({ DatabaseSync } = require("node:sqlite"));
-  } catch { /* Node antigo pode usar o conversor opcional abaixo. */ }
-  if (DatabaseSync) return new DatabaseSync(caminhoBanco, { readOnly: true });
-
-  let Database;
-  try {
-    Database = require("better-sqlite3");
   } catch {
-    throw new Error("Use Node.js 22.13 ou superior para exportar o SQLite, ou instale o conversor alternativo com npm install --include=optional.");
+    throw new Error("Use Node.js 22.13 ou superior para exportar o SQLite com o conversor incluído no próprio Node.");
   }
-  return new Database(caminhoBanco, { readonly: true, fileMustExist: true });
+  return new DatabaseSync(caminhoBanco, { readOnly: true });
 }
 
 function exportar(caminhoBanco, caminhoSaida) {
